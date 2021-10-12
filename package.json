@@ -1,0 +1,26 @@
+{
+  "name": "bitloops",
+  "version": "0.0.1",
+  "description": "NodeJS library for the Bitloops",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bitloops/node-bitloops.git"
+  },
+  "keywords": ["Bitloops", "Backend-as-a-Service", "Low Code", "Low-Code"],
+  "author": "Bitloops",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bitloops/node-bitloops/issues"
+  },
+  "homepage": "https://github.com/bitloops/node-bitloops#readme"
+}

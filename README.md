@@ -25,13 +25,13 @@ $ bower install bitloops
 
 ### TypeScript Frontend usage Example
 ```ts
-import bitloops, { AuthProviders } from 'bitloops';
+import Bitloops, { AuthProviders, AuthTypes } from 'bitloops';
 import { getAuth, onAuthStateChanged } from 'firebase/auth'; // If you are using Firebase
 
 // You will get this from your Console in your Workflow information
 const bitloopsConfig = {
 	apiKey: "kgyst344ktst43kyygk4tkt4s",
-	gatewayServer: "bitloops.net",
+	server: "bitloops.net",
 	workspaceId: "4f7a0fc5-fe2f-450a-b246-11a0873e91f0",
 	messagingSenderId: "742387243782",
 }
@@ -43,7 +43,8 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     // If you are using Firebase authentication you need to pass
 	// the user auth data as context for your web requests
-    await bitloops.authenticate({ 
+    bitloops.authenticate({ 
+		authenticationType: AuthTypes.BitloopsUser,
 		provider: AuthProviders.FIREBASE, 
 		firebaseProviderId: 'myProviderId', // You set this in the Bitloops Console
 		user,
@@ -58,8 +59,8 @@ onAuthStateChanged(auth, (user) => {
 // If you want to pass a username/password combo you should first initialize
 // and then authenticate using a username / password combo over https
 
-// bitloops.initialize(bitloopsConfig);
-// await bitloops.authenticate({ 
+// await bitloops.initialize(bitloopsConfig);
+// bitloops.authenticate({ 
 // 	provider: AuthProviders.BITLOOPS_USER_PASS, 
 // 	username, 
 // 	password,

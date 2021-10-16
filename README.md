@@ -31,7 +31,7 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth'; // If you are using
 // You will get this from your Console in your Workflow information
 const bitloopsConfig = {
 	apiKey: "kgyst344ktst43kyygk4tkt4s",
-	gatewayServer: "bitloops.net",
+	server: "bitloops.net",
 	workspaceId: "4f7a0fc5-fe2f-450a-b246-11a0873e91f0",
 	messagingSenderId: "742387243782",
 }

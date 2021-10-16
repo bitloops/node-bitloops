@@ -1,6 +1,6 @@
 {
   "name": "bitloops",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "NodeJS library for the Bitloops",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,11 +16,27 @@
     "type": "git",
     "url": "git+https://github.com/bitloops/node-bitloops.git"
   },
-  "keywords": ["Bitloops", "Backend-as-a-Service", "Low Code", "Low-Code"],
+  "keywords": [
+    "Bitloops",
+    "Backend-as-a-Service",
+    "Low Code",
+    "Low-Code",
+    "Backend",
+    "Frontend",
+    "Worfklow Orchestration"
+  ],
   "author": "Bitloops",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/bitloops/node-bitloops/issues"
   },
-  "homepage": "https://github.com/bitloops/node-bitloops#readme"
+  "homepage": "https://bitloops.com",
+  "dependencies": {
+    "axios": "^0.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.0",
+    "nodemon": "^2.0.13",
+    "ts-node": "^10.3.0"
+  }
 }

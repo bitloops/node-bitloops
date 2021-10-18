@@ -44,7 +44,7 @@ export type BitloopsConfig = {
 class Bitloops {
 	config: BitloopsConfig;
 	authType: AuthTypes;
-	authOptions: IFirebaseAuthenticationOptions | IAPIAuthenticationOptions;
+	authOptions: IFirebaseAuthenticationOptions | IAPIAuthenticationOptions | undefined;
 
 	constructor(config: BitloopsConfig) {
 		this.config = config;
@@ -58,11 +58,18 @@ class Bitloops {
 		this.authOptions = options;
 	}
 
+	public signOut(): void {
+		this.authOptions = undefined;
+	}
+
 	public async r(requestId: string, options?: any): Promise<any> {
 		return this.request(requestId, options);
 	}
 
 	public async request(requestId: string, options?: any): Promise<any> {
+		if (!this.authOptions) {
+			throw Error('Not authenticated');
+		}
 		const body = { 
 			messageId: requestId,
 			workspaceId: this.config.workspaceId, 
@@ -81,6 +88,9 @@ class Bitloops {
 	}
 
 	public async publish(messageId: string, options?: any): Promise<any> {
+		if (!this.authOptions) {
+			throw Error('Not authenticated');
+		}
 		const body = { 
 			messageId: messageId,
 			workspaceId: this.config.workspaceId, 

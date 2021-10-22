@@ -45,10 +45,7 @@ onAuthStateChanged(auth, (user) => {
 	// the user auth data as context for your web requests
     bitloops.authenticate({ 
 		authenticationType: AuthTypes.FirebaseUser,
-		provider: {
-			type: AuthProviders.FIREBASE,
-			id: 'myProviderId', // You set this in the Bitloops Console
-		},
+		providerId: 'myProviderId', // You set this in the Bitloops Console
 		user,
 	});
   } else {

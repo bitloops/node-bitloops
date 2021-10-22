@@ -7,10 +7,6 @@ export enum AuthTypes {
 	FirebaseUser = 'firebaseuser',
 }
 
-export enum AuthProviders {
-	FIREBASE = 'firebase',
-}
-
 export interface IFirebaseUser {
 	accessToken: string
 }
@@ -23,16 +19,8 @@ export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
 	token: string
 }
 
-export interface IProviderAuthenticationOptions extends IAuthenticationOptions {
-	provider: AuthProvider;
-}
-
-export type AuthProvider = {
-	type: AuthProviders;
-	id: string;
-}
-
-export interface IFirebaseAuthenticationOptions extends IProviderAuthenticationOptions {
+export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
+	providerId: string;
 	user: IFirebaseUser;
 }
 
@@ -79,9 +67,10 @@ class Bitloops {
 			messageId: requestId,
 			workspaceId: this.config.workspaceId,
 		};
+		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		const response = await axios({
 			method: 'post',
-			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.getToken(this.authOptions.authenticationType, this.authOptions)}` },
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'providerId': authHeaders.providerId },
 			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/request`,
 			data: body,
 		});
@@ -100,17 +89,19 @@ class Bitloops {
 			messageId: messageId,
 			workspaceId: this.config.workspaceId,
 		};
+		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		await axios({
 			method: 'post',
-			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.getToken(this.authOptions.authenticationType, this.authOptions)}` },
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'providerId': authHeaders.providerId },
 			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/publish`,
 			data: body,
 		});
 		return true;
 	}
 
-	private getToken(authType: AuthTypes, authOptions: AuthenticationOptionsType): string {
+	private getAuthHeaders(authType: AuthTypes, authOptions: AuthenticationOptionsType): { token: string, providerId?: string } {
 		let token: string;
+		let providerId: string;
 		switch (authType) {
 			case AuthTypes.Basic:
 				throw Error('Unimplemented');
@@ -121,11 +112,17 @@ class Bitloops {
 				throw Error('Unimplemented');
 			case AuthTypes.FirebaseUser:
 				token = (authOptions as IFirebaseAuthenticationOptions).user?.accessToken;
-				break;
+				providerId = (authOptions as IFirebaseAuthenticationOptions).providerId;
+				return {
+					token,
+					providerId,
+				}
 			default:
 				throw Error('Unimplemented');
 		}
-		return token;
+		return {
+			token,
+		}
 	}
 }
 

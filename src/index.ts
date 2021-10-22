@@ -4,7 +4,7 @@ export enum AuthTypes {
 	Basic = 'basic',
 	X_API_KEY = 'x-api-key',
 	Token = 'token',
-	BitloopsUser = 'bitloopsuser',
+	FirebaseUser = 'firebaseuser',
 }
 
 export enum AuthProviders {
@@ -19,19 +19,24 @@ export interface IAuthenticationOptions {
 	authenticationType: AuthTypes;
 }
 
-export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
-	provider: AuthProviders;
-	providerId: string;
-	user: IFirebaseUser,
-	credentials?: never,
+export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
+	token: string
 }
 
-export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
-	credentials: string,
-	provider?: never;
-	providerId?: never;
-	user?: never,
+export interface IProviderAuthenticationOptions extends IAuthenticationOptions {
+	provider: AuthProvider;
 }
+
+export type AuthProvider = {
+	type: AuthProviders;
+	id: string;
+}
+
+export interface IFirebaseAuthenticationOptions extends IProviderAuthenticationOptions {
+	user: IFirebaseUser;
+}
+
+export type AuthenticationOptionsType = IFirebaseAuthenticationOptions | IAPIAuthenticationOptions;
 
 export type BitloopsConfig = {
 	apiKey: string,
@@ -44,7 +49,7 @@ export type BitloopsConfig = {
 class Bitloops {
 	config: BitloopsConfig;
 	authType: AuthTypes;
-	authOptions: IFirebaseAuthenticationOptions | IAPIAuthenticationOptions | undefined;
+	authOptions: AuthenticationOptionsType | undefined;
 
 	constructor(config: BitloopsConfig) {
 		this.config = config;
@@ -70,38 +75,57 @@ class Bitloops {
 		if (!this.authOptions) {
 			throw Error('Not authenticated');
 		}
-		const body = { 
+		const body = {
 			messageId: requestId,
-			workspaceId: this.config.workspaceId, 
+			workspaceId: this.config.workspaceId,
 		};
 		const response = await axios({
 			method: 'post',
-			headers: {'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.authOptions?.user?.accessToken || this.authOptions.credentials}`},
-			url: `${this.config.ssl === false?'http':'https'}://${this.config.server}/bitloops/request`,
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.getToken(this.authOptions.authenticationType, this.authOptions)}` },
+			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/request`,
 			data: body,
-		  });
+		});
 		return response.data;
-	} 
+	}
 
 	public async p(messageId: string, options?: any): Promise<any> {
-		return this.request(messageId, options); 
+		return this.request(messageId, options);
 	}
 
 	public async publish(messageId: string, options?: any): Promise<any> {
 		if (!this.authOptions) {
 			throw Error('Not authenticated');
 		}
-		const body = { 
+		const body = {
 			messageId: messageId,
-			workspaceId: this.config.workspaceId, 
+			workspaceId: this.config.workspaceId,
 		};
 		await axios({
 			method: 'post',
-			headers: {'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.authOptions?.user?.accessToken || this.authOptions.credentials}`},
-			url: `${this.config.ssl === false?'http':'https'}://${this.config.server}/bitloops/request`,
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.getToken(this.authOptions.authenticationType, this.authOptions)}` },
+			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/publish`,
 			data: body,
 		});
 		return true;
+	}
+
+	private getToken(authType: AuthTypes, authOptions: AuthenticationOptionsType): string {
+		let token: string;
+		switch (authType) {
+			case AuthTypes.Basic:
+				throw Error('Unimplemented');
+			case AuthTypes.X_API_KEY:
+				token = (authOptions as IAPIAuthenticationOptions).token;
+				break;
+			case AuthTypes.Token:
+				throw Error('Unimplemented');
+			case AuthTypes.FirebaseUser:
+				token = (authOptions as IFirebaseAuthenticationOptions).user?.accessToken;
+				break;
+			default:
+				throw Error('Unimplemented');
+		}
+		return token;
 	}
 }
 

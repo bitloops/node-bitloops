@@ -67,6 +67,8 @@ class Bitloops {
 			messageId: requestId,
 			workspaceId: this.config.workspaceId,
 		};
+    if (options?.payload) body['payload'] = options.payload;
+    else if (options) body['payload'] = options;
 		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		const response = await axios({
 			method: 'post',
@@ -89,6 +91,8 @@ class Bitloops {
 			messageId: messageId,
 			workspaceId: this.config.workspaceId,
 		};
+    if (options?.payload) body['payload'] = options.payload;
+    else if (options) body['payload'] = options;
 		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		await axios({
 			method: 'post',

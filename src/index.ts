@@ -1,10 +1,10 @@
 const axios = require('axios').default;
 
 export enum AuthTypes {
-	Basic = 'basic',
+	Basic = 'Basic',
 	X_API_KEY = 'x-api-key',
-	Token = 'token',
-	FirebaseUser = 'firebaseuser',
+	Token = 'Token',
+	FirebaseUser = 'FirebaseUser',
 }
 
 export interface IFirebaseUser {
@@ -70,7 +70,7 @@ class Bitloops {
 		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		const response = await axios({
 			method: 'post',
-			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'providerId': authHeaders.providerId },
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'Provider-Id': authHeaders.providerId },
 			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/request`,
 			data: body,
 		});
@@ -92,7 +92,7 @@ class Bitloops {
 		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		await axios({
 			method: 'post',
-			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'providerId': authHeaders.providerId },
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'Provider-Id': authHeaders.providerId },
 			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/publish`,
 			data: body,
 		});

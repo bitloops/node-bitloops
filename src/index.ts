@@ -63,12 +63,12 @@ class Bitloops {
 		if (!this.authOptions) {
 			throw Error('Not authenticated');
 		}
-		const body = {
+		let body = {
 			messageId: requestId,
 			workspaceId: this.config.workspaceId,
 		};
-    if (options?.payload) body['payload'] = options.payload;
-    else if (options) body['payload'] = options;
+    if (options?.payload) body = { ...body, ...options.payload };
+    else if (options) body = { ...body, ...options };
 		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		const response = await axios({
 			method: 'post',

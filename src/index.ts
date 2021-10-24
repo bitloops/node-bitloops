@@ -4,11 +4,7 @@ export enum AuthTypes {
 	Basic = 'basic',
 	X_API_KEY = 'x-api-key',
 	Token = 'token',
-	BitloopsUser = 'bitloopsuser',
-}
-
-export enum AuthProviders {
-	FIREBASE = 'firebase',
+	FirebaseUser = 'firebaseuser',
 }
 
 export interface IFirebaseUser {
@@ -19,19 +15,16 @@ export interface IAuthenticationOptions {
 	authenticationType: AuthTypes;
 }
 
-export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
-	provider: AuthProviders;
-	providerId: string;
-	user: IFirebaseUser,
-	credentials?: never,
+export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
+	token: string
 }
 
-export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
-	credentials: string,
-	provider?: never;
-	providerId?: never;
-	user?: never,
+export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
+	providerId: string;
+	user: IFirebaseUser;
 }
+
+export type AuthenticationOptionsType = IFirebaseAuthenticationOptions | IAPIAuthenticationOptions;
 
 export type BitloopsConfig = {
 	apiKey: string,
@@ -44,7 +37,7 @@ export type BitloopsConfig = {
 class Bitloops {
 	config: BitloopsConfig;
 	authType: AuthTypes;
-	authOptions: IFirebaseAuthenticationOptions | IAPIAuthenticationOptions | undefined;
+	authOptions: AuthenticationOptionsType | undefined;
 
 	constructor(config: BitloopsConfig) {
 		this.config = config;
@@ -70,38 +63,66 @@ class Bitloops {
 		if (!this.authOptions) {
 			throw Error('Not authenticated');
 		}
-		const body = { 
+		const body = {
 			messageId: requestId,
-			workspaceId: this.config.workspaceId, 
+			workspaceId: this.config.workspaceId,
 		};
+		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		const response = await axios({
 			method: 'post',
-			headers: {'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.authOptions?.user?.accessToken || this.authOptions.credentials}`},
-			url: `${this.config.ssl === false?'http':'https'}://${this.config.server}/bitloops/request`,
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'providerId': authHeaders.providerId },
+			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/request`,
 			data: body,
-		  });
+		});
 		return response.data;
-	} 
+	}
 
 	public async p(messageId: string, options?: any): Promise<any> {
-		return this.request(messageId, options); 
+		return this.request(messageId, options);
 	}
 
 	public async publish(messageId: string, options?: any): Promise<any> {
 		if (!this.authOptions) {
 			throw Error('Not authenticated');
 		}
-		const body = { 
+		const body = {
 			messageId: messageId,
-			workspaceId: this.config.workspaceId, 
+			workspaceId: this.config.workspaceId,
 		};
+		const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
 		await axios({
 			method: 'post',
-			headers: {'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${this.authOptions?.user?.accessToken || this.authOptions.credentials}`},
-			url: `${this.config.ssl === false?'http':'https'}://${this.config.server}/bitloops/request`,
+			headers: { 'Content-Type': 'application/json', 'Authorization': `${this.authOptions.authenticationType} ${authHeaders.token}`, 'providerId': authHeaders.providerId },
+			url: `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/publish`,
 			data: body,
 		});
 		return true;
+	}
+
+	private getAuthHeaders(authType: AuthTypes, authOptions: AuthenticationOptionsType): { token: string, providerId?: string } {
+		let token: string;
+		let providerId: string;
+		switch (authType) {
+			case AuthTypes.Basic:
+				throw Error('Unimplemented');
+			case AuthTypes.X_API_KEY:
+				token = (authOptions as IAPIAuthenticationOptions).token;
+				break;
+			case AuthTypes.Token:
+				throw Error('Unimplemented');
+			case AuthTypes.FirebaseUser:
+				token = (authOptions as IFirebaseAuthenticationOptions).user?.accessToken;
+				providerId = (authOptions as IFirebaseAuthenticationOptions).providerId;
+				return {
+					token,
+					providerId,
+				}
+			default:
+				throw Error('Unimplemented');
+		}
+		return {
+			token,
+		}
 	}
 }
 

@@ -32,9 +32,11 @@
   },
   "homepage": "https://bitloops.com",
   "dependencies": {
-    "axios": "^0.23.0"
+    "axios": "^0.23.0",
+    "eventsource": "^1.1.0"
   },
   "devDependencies": {
+    "@types/eventsource": "^1.1.7",
     "@types/node": "^16.11.0",
     "nodemon": "^2.0.13",
     "ts-node": "^10.3.0"

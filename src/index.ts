@@ -40,6 +40,7 @@ class Bitloops {
   authType: AuthTypes;
   authOptions: AuthenticationOptionsType | undefined;
   subscribeConnection: EventSource;
+  subscribeConnectionId: string = '';
 
   constructor(config: BitloopsConfig) {
     this.config = config;
@@ -62,9 +63,7 @@ class Bitloops {
   }
 
   public async request(requestId: string, options?: any): Promise<any> {
-    if (!this.authOptions) {
-      throw Error('Not authenticated');
-    }
+    const headers = this.getAuthHeaders();
     let body = {
       messageId: requestId,
       workspaceId: this.config.workspaceId,
@@ -72,18 +71,9 @@ class Bitloops {
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
-    const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
-    const headers = {
-      'Content-Type': 'application/json',
-      Authorization: `${this.authOptions.authenticationType} ${authHeaders.token}`,
-    };
-    if (authHeaders.providerId) headers['Provider-Id'] = authHeaders.providerId;
-
-    const response = await axios.post(
-      `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/request`,
-      body,
-      { headers }
-    );
+    const response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
+      headers,
+    });
     return response.data;
   }
 
@@ -92,46 +82,44 @@ class Bitloops {
   }
 
   public async publish(messageId: string, options?: any): Promise<any> {
-    if (!this.authOptions) {
-      throw Error('Not authenticated');
-    }
+    const headers = this.getAuthHeaders();
     let body = {
       messageId: messageId,
       workspaceId: this.config.workspaceId,
     };
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
-    const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
-    const headers = {
-      'Content-Type': 'application/json',
-      Authorization: `${this.authOptions.authenticationType} ${authHeaders.token}`,
-    };
-    if (authHeaders.providerId) headers['Provider-Id'] = authHeaders.providerId;
-    await axios.post(`${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/bitloops/publish`, body, {
+
+    await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/publish`, body, {
       headers,
     });
     return true;
   }
 
-  public subscribe(namedEvent: string) {
-    if (!this.subscribeConnection) {
+  public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void) {
+    const subscribeUrl = `${this.httpSecure()}://${this.config.server}/events/subscribe/${this.subscribeConnectionId}`;
+
+    const headers = this.getAuthHeaders();
+    const response = await axios.post<string>(
+      subscribeUrl,
+      {
+        topics: [namedEvent],
+        workspaceId: this.config.workspaceId,
+      },
+      { headers }
+    );
+
+    if (!this.subscribeConnectionId) {
+      this.subscribeConnectionId = response.data;
       this.initializeSubscribeConnection();
     }
-    // sse.onmessage = (data) => {
-    //   console.log('*->message');
-    //   console.log(data);
-    // };
-    this.subscribeConnection.addEventListener(namedEvent, function (e) {
-      //   if (e.origin != 'http://example.com') {
-      //     console.error('Origin was not http://example.com');
-      //     return;
-      //   }
-      console.log(e);
-      // console.log(e.data)
+
+    this.subscribeConnection.addEventListener(namedEvent, (event) => {
+      callback(JSON.parse(event.data));
     });
   }
 
-  private getAuthHeaders(
+  private getAuthHeaderValues(
     authType: AuthTypes,
     authOptions: AuthenticationOptionsType
   ): { token: string; providerId?: string } {
@@ -159,25 +147,35 @@ class Bitloops {
       token,
     };
   }
+  private httpSecure(): 'http' | 'https' {
+    return this.config.ssl === false ? 'http' : 'https';
+  }
 
-  // TODO re-initialize on jwt expiration?
-  private initializeSubscribeConnection() {
+  private getAuthHeaders() {
     if (!this.authOptions) {
       throw Error('Not authenticated');
     }
-
-    const url = `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server}/events/${
-      this.config.workspaceId
-    }`;
-    const authHeaders = this.getAuthHeaders(this.authOptions.authenticationType, this.authOptions);
+    const authHeaders = this.getAuthHeaderValues(this.authOptions.authenticationType, this.authOptions);
     const headers = {
       'Content-Type': 'application/json',
       Authorization: `${this.authOptions.authenticationType} ${authHeaders.token}`,
     };
-
     if (authHeaders.providerId) headers['Provider-Id'] = authHeaders.providerId;
+    return headers;
+  }
+
+  // TODO re-initialize on jwt expiration?
+  private initializeSubscribeConnection() {
+    const url = `${this.httpSecure()}://${this.config.server}/events/${this.subscribeConnectionId}`;
+
+    const headers = this.getAuthHeaders();
     const eventSourceInitDict = { headers };
+
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
+    this.subscribeConnection.onerror = (error) => {
+      // console.log('subscribeConnection error', error, 'closing sse connection...');
+      this.subscribeConnection.close();
+    };
   }
 }
 

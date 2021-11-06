@@ -68,7 +68,10 @@ onAuthStateChanged(auth, (user) => {
 const userInfo = await bitloops.request('user.getUserInfo');
 const productInfo = await bitloops.request('product.getProductInfo', { productId: '7829' });
 bitloops.publish('page-visited-event', { page: 'landing-page'});
-bitloops.subscribe('ride-requested').then((data)=> {});
+const callback = (data: any) => {
+  console.log('Received', data);
+}
+bitloops.subscribe('ride-requested', callback);
 ```
 
 > _PRO TIP_: The second argument passed in the _product.getProductInfo_ request and in the p_age-visited-event_ publish message containing the data of the request/publish message is using a shortcut notation which you can use if the only arguments other than the _requestId_ or the _messageId_ are the payload parameters. The full form is the following:

@@ -5,6 +5,7 @@ import Bitloops, { AuthTypes } from './index';
 const bitloopsConfig = {
   apiKey: 'kgyst344ktst43kyygk4tkt4s',
   server: 'localhost:3005',
+  environmentId: 'production',
   ssl: false,
   workspaceId: 'db24bb48-d2e3-4433-8fd0-79eef2bf63df',
   messagingSenderId: '742387243782',

@@ -2,10 +2,13 @@ import axios from 'axios';
 import EventSource from 'eventsource';
 
 export enum AuthTypes {
+  Anonymous = 'Anonymous',
   Basic = 'Basic',
-  X_API_KEY = 'x-api-key',
+  X_API_KEY = 'X-API-Key',
   Token = 'Token',
+  User = 'User',
   FirebaseUser = 'FirebaseUser',
+  OAuth2 = 'OAuth2',
 }
 
 export interface IFirebaseUser {
@@ -30,6 +33,7 @@ export type AuthenticationOptionsType = IFirebaseAuthenticationOptions | IAPIAut
 export type BitloopsConfig = {
   apiKey: string;
   server: string;
+  environmentId: string;
   ssl?: boolean;
   workspaceId: string;
   messagingSenderId: string;
@@ -58,16 +62,16 @@ class Bitloops {
     this.authOptions = undefined;
   }
 
-  public async r(requestId: string, options?: any): Promise<any> {
-    return this.request(requestId, options);
+  public async r(workflowId: string, options?: any): Promise<any> {
+    return this.request(workflowId, options);
   }
 
-  public async request(requestId: string, options?: any): Promise<any> {
+  public async request(workflowId: string, options?: any): Promise<any> {
     const headers = this.getAuthHeaders();
-    let body = {
-      messageId: requestId,
-      workspaceId: this.config.workspaceId,
-    };
+    headers['workspace-id'] = this.config.workspaceId;
+    headers['environment-id'] = this.config.environmentId;
+    headers['workflow-id'] = workflowId;
+    let body = {};
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
@@ -128,10 +132,14 @@ class Bitloops {
     switch (authType) {
       case AuthTypes.Basic:
         throw Error('Unimplemented');
+      case AuthTypes.OAuth2:
+          throw Error('Unimplemented');
       case AuthTypes.X_API_KEY:
         token = (authOptions as IAPIAuthenticationOptions).token;
         break;
       case AuthTypes.Token:
+        throw Error('Unimplemented');
+      case AuthTypes.User:
         throw Error('Unimplemented');
       case AuthTypes.FirebaseUser:
         token = (authOptions as IFirebaseAuthenticationOptions).user?.accessToken;

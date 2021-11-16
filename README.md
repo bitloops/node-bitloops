@@ -18,11 +18,6 @@ Using yarn:
 $ yarn add bitloops
 ```
 
-Using bower: 
-```bash
-$ bower install bitloops
-```
-
 ### TypeScript Frontend usage Example
 ```ts
 import Bitloops, { AuthProviders, AuthTypes } from 'bitloops';
@@ -32,6 +27,7 @@ import { getAuth, onAuthStateChanged } from 'firebase/auth'; // If you are using
 const bitloopsConfig = {
 	apiKey: "kgyst344ktst43kyygk4tkt4s",
 	server: "bitloops.net",
+	environmentId: "3c42a5ef-fe21-4b50-8128-8596ea47da93",
 	workspaceId: "4f7a0fc5-fe2f-450a-b246-11a0873e91f0",
 	messagingSenderId: "742387243782",
 }
@@ -65,10 +61,9 @@ onAuthStateChanged(auth, (user) => {
 // 	password,
 // });
 
-const userInfo = await bitloops.request('user.getUserInfo');
-const productInfo = await bitloops.request('product.getProductInfo', { productId: '7829' });
+const userInfo = await bitloops.request('db7a654a-1e2c-4f9c-b2d0-8ff2e2d6cbfe');
+const productInfo = await bitloops.request('64f264ad-76b1-4ba1-975c-c7b9795e55ce', { productId: '7829' });
 bitloops.publish('page-visited-event', { page: 'landing-page'});
-bitloops.subscribe('ride-requested').then((data)=> {});
 ```
 
 > _PRO TIP_: The second argument passed in the _product.getProductInfo_ request and in the p_age-visited-event_ publish message containing the data of the request/publish message is using a shortcut notation which you can use if the only arguments other than the _requestId_ or the _messageId_ are the payload parameters. The full form is the following:
@@ -98,7 +93,12 @@ const productInfo = await bitloops.request('product.getProductInfo', {
 
 ### Subscriptions
 
-TBA soon!
+```ts
+const callback = (data: any) => {
+  console.log('Received', data);
+}
+bitloops.subscribe('ride-requested', callback);
+```
 
 ## Questions?
 

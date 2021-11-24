@@ -21,11 +21,13 @@ export interface IAuthenticationOptions {
 
 export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
   token: string;
+  refreshTokenFunction?: never;
 }
 
 export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
   providerId: string;
   user: IFirebaseUser;
+  refreshTokenFunction?: () => Promise<string | null>;
 }
 
 export type AuthenticationOptionsType = IFirebaseAuthenticationOptions | IAPIAuthenticationOptions;
@@ -75,9 +77,21 @@ class Bitloops {
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
-    const response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
+    let response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
       headers,
+    }).catch((error: any) => {
+      return error.response;
     });
+    if (response.status === 401 && this.authOptions?.authenticationType === AuthTypes.FirebaseUser && this.authOptions?.refreshTokenFunction) {
+      const newAccessToken = await this.authOptions.refreshTokenFunction();
+      if (newAccessToken) {
+        this.authOptions.user.accessToken = newAccessToken;
+        headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`,
+        response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
+          headers,
+        });
+      }
+    }
     return response.data;
   }
 

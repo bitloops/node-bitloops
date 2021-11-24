@@ -21,7 +21,7 @@ $ yarn add bitloops
 ### TypeScript Frontend usage Example
 ```ts
 import Bitloops, { AuthProviders, AuthTypes } from 'bitloops';
-import { getAuth, onAuthStateChanged } from 'firebase/auth'; // If you are using Firebase
+import { getAuth, onAuthStateChanged, onAuthStateChanged } from 'firebase/auth'; // If you are using Firebase
 
 // You will get this from your Console in your Workflow information
 const bitloopsConfig = {
@@ -35,6 +35,21 @@ const bitloopsConfig = {
 await bitloops.initialize(bitloopsConfig);
 
 const auth = getAuth();
+const refreshTokenFunction =
+      (): Promise<string | null> => new Promise<string | null>((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          unsubscribe();
+          if (user) {
+            getIdToken(user, true).then((idToken: string) => {
+              resolve(idToken);
+            }, (error) => {
+              reject(error);
+            });
+          } else {
+            resolve(null);
+          }
+        });
+      });
 onAuthStateChanged(auth, (user) => {
   if (user) {
     // If you are using Firebase authentication you need to pass
@@ -43,6 +58,7 @@ onAuthStateChanged(auth, (user) => {
 		authenticationType: AuthTypes.FirebaseUser,
 		providerId: 'myProviderId', // You set this in the Bitloops Console
 		user,
+    refreshTokenFunction, // used to refresh the token when it expires
 	});
   } else {
     // User is signed out

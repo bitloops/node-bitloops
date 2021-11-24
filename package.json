@@ -1,6 +1,6 @@
 {
   "name": "bitloops",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "NodeJS library for the Bitloops",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@types/eventsource": "^1.1.7",
-    "@types/node": "^16.11.7",
+    "@types/node": "^16.11.10",
     "nodemon": "^2.0.15",
     "ts-node": "^10.3.0"
   }

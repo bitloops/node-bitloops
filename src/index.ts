@@ -186,7 +186,6 @@ class Bitloops {
     return headers;
   }
 
-  // TODO re-initialize on jwt expiration?
   private initializeSubscribeConnection() {
     const url = `${this.httpSecure()}://${this.config.server}/events/${this.subscribeConnectionId}`;
 
@@ -194,9 +193,21 @@ class Bitloops {
     const eventSourceInitDict = { headers };
 
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
-    this.subscribeConnection.onerror = (error) => {
-      // console.log('subscribeConnection error', error, 'closing sse connection...');
+    this.subscribeConnection.onerror = (error: any) => {
       this.subscribeConnection.close();
+      if (error.status === 401 && this.authOptions?.authenticationType === AuthTypes.FirebaseUser && this.authOptions?.refreshTokenFunction) {
+        new Promise(async (resolve, reject) => {
+          if (error.status === 401 && this.authOptions?.authenticationType === AuthTypes.FirebaseUser && this.authOptions?.refreshTokenFunction) {
+            const newAccessToken = await this.authOptions.refreshTokenFunction();
+            if (newAccessToken) {
+              this.authOptions.user.accessToken = newAccessToken;
+              headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`,
+              this.subscribeConnection = new EventSource(url, eventSourceInitDict);
+              resolve(true);
+            } else reject(error);
+          }
+        });
+      }
     };
   }
 }

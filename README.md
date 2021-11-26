@@ -77,8 +77,8 @@ onAuthStateChanged(auth, (user) => {
 // 	password,
 // });
 
-const userInfo = await bitloops.request('db7a654a-1e2c-4f9c-b2d0-8ff2e2d6cbfe');
-const productInfo = await bitloops.request('64f264ad-76b1-4ba1-975c-c7b9795e55ce', { productId: '7829' });
+const userInfo = await bitloops.request('db7a654a-1e2c-4f9c-b2d0-8ff2e2d6cbfe', '70e3084f-9056-4905-ac45-a5b65c926b1b');
+const productInfo = await bitloops.request('64f264ad-76b1-4ba1-975c-c7b9795e55ce', '70e3084f-9056-4905-ac45-a5b65c926b1b', { productId: '7829' });
 bitloops.publish('page-visited-event', { page: 'landing-page'});
 ```
 

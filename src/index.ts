@@ -68,11 +68,12 @@ class Bitloops {
     return this.request(workflowId, options);
   }
 
-  public async request(workflowId: string, options?: any): Promise<any> {
+  public async request(workflowId: string, nodeId: string, options?: any): Promise<any> {
     const headers = this.getAuthHeaders();
     headers['workspace-id'] = this.config.workspaceId;
     headers['environment-id'] = this.config.environmentId;
     headers['workflow-id'] = workflowId;
+    headers['node-id'] = nodeId;
     let body = {};
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
@@ -87,9 +88,9 @@ class Bitloops {
       if (newAccessToken) {
         this.authOptions.user.accessToken = newAccessToken;
         headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`,
-        response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
-          headers,
-        });
+          response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
+            headers,
+          });
       }
     }
     return response.data;
@@ -147,7 +148,7 @@ class Bitloops {
       case AuthTypes.Basic:
         throw Error('Unimplemented');
       case AuthTypes.OAuth2:
-          throw Error('Unimplemented');
+        throw Error('Unimplemented');
       case AuthTypes.X_API_KEY:
         token = (authOptions as IAPIAuthenticationOptions).token;
         break;
@@ -202,7 +203,7 @@ class Bitloops {
             if (newAccessToken) {
               this.authOptions.user.accessToken = newAccessToken;
               headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`,
-              this.subscribeConnection = new EventSource(url, eventSourceInitDict);
+                this.subscribeConnection = new EventSource(url, eventSourceInitDict);
               resolve(true);
             } else reject(error);
           }

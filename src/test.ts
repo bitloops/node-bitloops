@@ -30,7 +30,7 @@ const test = async () => {
 
   const workspacesP = await bitloops.p('workspaces.find');
   console.log(workspacesP);
-  const workspaces = await bitloops.r('workspaces.find');
+  const workspaces = await bitloops.r('workspaces.find', '70e3084f-9056-4905-ac45-a5b65c926b1b');
   console.log(workspaces);
 
   try {

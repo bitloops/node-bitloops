@@ -64,8 +64,8 @@ class Bitloops {
     this.authOptions = undefined;
   }
 
-  public async r(workflowId: string, options?: any): Promise<any> {
-    return this.request(workflowId, options);
+  public async r(workflowId: string, nodeId: string, options?: any): Promise<any> {
+    return this.request(workflowId, nodeId, options);
   }
 
   public async request(workflowId: string, nodeId: string, options?: any): Promise<any> {
@@ -163,6 +163,9 @@ class Bitloops {
           token,
           providerId,
         };
+      case AuthTypes.Anonymous:
+        token = "";
+        break;
       default:
         throw Error('Unimplemented');
     }

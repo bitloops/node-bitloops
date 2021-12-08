@@ -5,14 +5,14 @@ import Bitloops, { AuthTypes } from './index';
 const bitloopsConfig = {
   apiKey: 'kgyst344ktst43kyygk4tkt4s',
   server: 'localhost:3005',
-  environmentId: 'production',
+  environmentId: 'development',
   ssl: false,
   workspaceId: 'db24bb48-d2e3-4433-8fd0-79eef2bf63df',
   messagingSenderId: '742387243782',
 };
 
 const test = async () => {
-  const bitloops = await Bitloops.initialize(bitloopsConfig);
+  const bitloops = Bitloops.initialize(bitloopsConfig);
   // bitloops.authenticate({
   //   authenticationType: AuthTypes.FirebaseUser,
   //   providerId: 'myProviderId', // You set this in the Bitloops Console
@@ -28,12 +28,12 @@ const test = async () => {
     token: 'xrPA9_%Hx-#R@+$6px2+WVj-Ndw^a4W2',
   });
 
-  const workspacesP = await bitloops.p('workspaces.find');
-  console.log(workspacesP);
-  const workspaces = await bitloops.r('workspaces.find', '70e3084f-9056-4905-ac45-a5b65c926b1b');
-  console.log(workspaces);
-
   try {
+    const workspacesP = await bitloops.p('workspaces.find');
+    console.log(workspacesP);
+    const workspaces = await bitloops.r('00cdd9c6-c6e9-40f2-b0c0-8903e33ef279', '8214cbd7-4741-46a4-bb28-ae7ad0f33cc4');
+    console.log(workspaces);
+
     await bitloops.subscribe('workflowEvents.update', (data) => {
       console.log('workflow.Update received', data);
     });

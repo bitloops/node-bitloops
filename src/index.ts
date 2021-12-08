@@ -52,7 +52,7 @@ class Bitloops {
     this.config = config;
   }
 
-  public static async initialize(config: BitloopsConfig): Promise<Bitloops> {
+  public static initialize(config: BitloopsConfig): Bitloops {
     return new Bitloops(config);
   }
 
@@ -78,19 +78,25 @@ class Bitloops {
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
-    let response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
-      headers,
-    }).catch((error: any) => {
-      return error.response;
-    });
-    if (response.status === 401 && this.authOptions?.authenticationType === AuthTypes.FirebaseUser && this.authOptions?.refreshTokenFunction) {
+    let response = await axios
+      .post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
+        headers,
+      })
+      .catch((error: any) => {
+        return error.response;
+      });
+    if (
+      response.status === 401 &&
+      this.authOptions?.authenticationType === AuthTypes.FirebaseUser &&
+      this.authOptions?.refreshTokenFunction
+    ) {
       const newAccessToken = await this.authOptions.refreshTokenFunction();
       if (newAccessToken) {
         this.authOptions.user.accessToken = newAccessToken;
-        headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`,
-          response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
+        (headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`),
+          (response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
             headers,
-          });
+          }));
       }
     }
     return response.data;
@@ -102,6 +108,9 @@ class Bitloops {
 
   public async publish(messageId: string, options?: any): Promise<any> {
     const headers = this.getAuthHeaders();
+    headers['workspace-id'] = this.config.workspaceId;
+    headers['environment-id'] = this.config.environmentId;
+    headers['message-id'] = messageId;
     let body = {
       messageId: messageId,
       workspaceId: this.config.workspaceId,
@@ -164,7 +173,7 @@ class Bitloops {
           providerId,
         };
       case AuthTypes.Anonymous:
-        token = "";
+        token = '';
         break;
       default:
         throw Error('Unimplemented');
@@ -199,14 +208,22 @@ class Bitloops {
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
     this.subscribeConnection.onerror = (error: any) => {
       this.subscribeConnection.close();
-      if (error.status === 401 && this.authOptions?.authenticationType === AuthTypes.FirebaseUser && this.authOptions?.refreshTokenFunction) {
+      if (
+        error.status === 401 &&
+        this.authOptions?.authenticationType === AuthTypes.FirebaseUser &&
+        this.authOptions?.refreshTokenFunction
+      ) {
         new Promise(async (resolve, reject) => {
-          if (error.status === 401 && this.authOptions?.authenticationType === AuthTypes.FirebaseUser && this.authOptions?.refreshTokenFunction) {
+          if (
+            error.status === 401 &&
+            this.authOptions?.authenticationType === AuthTypes.FirebaseUser &&
+            this.authOptions?.refreshTokenFunction
+          ) {
             const newAccessToken = await this.authOptions.refreshTokenFunction();
             if (newAccessToken) {
               this.authOptions.user.accessToken = newAccessToken;
-              headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`,
-                this.subscribeConnection = new EventSource(url, eventSourceInitDict);
+              (headers.Authorization = `${this.authOptions.authenticationType} ${newAccessToken}`),
+                (this.subscribeConnection = new EventSource(url, eventSourceInitDict));
               resolve(true);
             } else reject(error);
           }

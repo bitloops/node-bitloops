@@ -125,7 +125,9 @@ class Bitloops {
   }
 
   public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void) {
-    const subscribeUrl = `${this.httpSecure()}://${this.config.server}/events/subscribe/${this.subscribeConnectionId}`;
+    const subscribeUrl = `${this.httpSecure()}://${this.config.server}/bitloops/events/subscribe/${
+      this.subscribeConnectionId
+    }`;
 
     const headers = this.getAuthHeaders();
     const response = await axios.post<string>(
@@ -200,7 +202,7 @@ class Bitloops {
   }
 
   private initializeSubscribeConnection() {
-    const url = `${this.httpSecure()}://${this.config.server}/events/${this.subscribeConnectionId}`;
+    const url = `${this.httpSecure()}://${this.config.server}/bitloops/events/${this.subscribeConnectionId}`;
 
     const headers = this.getAuthHeaders();
     const eventSourceInitDict = { headers };

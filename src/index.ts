@@ -1,5 +1,5 @@
 import axios from 'axios';
-import EventSource from 'eventsource';
+import EventSource, { ReadyState } from 'eventsource';
 
 export enum AuthTypes {
   Anonymous = 'Anonymous',
@@ -41,12 +41,16 @@ export type BitloopsConfig = {
   messagingSenderId: string;
 };
 
+/** Removes subscribe listener */
+type UnSubscribe = () => void;
+
 class Bitloops {
   config: BitloopsConfig;
   authType: AuthTypes;
   authOptions: AuthenticationOptionsType | undefined;
-  subscribeConnection: EventSource;
-  subscribeConnectionId: string = '';
+  private subscribeConnection: EventSource;
+  private subscribeConnectionId: string = '';
+  private reconnectFreqSecs: number = 1;
 
   constructor(config: BitloopsConfig) {
     this.config = config;
@@ -124,7 +128,7 @@ class Bitloops {
     return true;
   }
 
-  public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void) {
+  public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void): Promise<UnSubscribe> {
     const subscribeUrl = `${this.httpSecure()}://${this.config.server}/bitloops/events/subscribe/${
       this.subscribeConnectionId
     }`;
@@ -141,12 +145,20 @@ class Bitloops {
 
     if (!this.subscribeConnectionId) {
       this.subscribeConnectionId = response.data;
-      this.initializeSubscribeConnection();
+      this.setupEventSource();
     }
 
-    this.subscribeConnection.addEventListener(namedEvent, (event) => {
+    const listenerCb = (event: MessageEvent<any>) => {
       callback(JSON.parse(event.data));
-    });
+    }
+
+    this.subscribeConnection.addEventListener(namedEvent, listenerCb);
+
+    return () => {
+      this.subscribeConnection.removeEventListener(namedEvent, listenerCb);
+      // Remove topic from state
+      // Close connection when topics=0
+    }
   }
 
   private getAuthHeaderValues(
@@ -201,13 +213,27 @@ class Bitloops {
     return headers;
   }
 
-  private initializeSubscribeConnection() {
+  private sseReconnect() {
+    setTimeout(() => {
+      // console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
+      this.setupEventSource();
+      this.reconnectFreqSecs = this.reconnectFreqSecs >= 64 ? 64 : this.reconnectFreqSecs * 2;
+    }, this.reconnectFreqSecs * 1000);
+  }
+
+  private setupEventSource() {
     const url = `${this.httpSecure()}://${this.config.server}/bitloops/events/${this.subscribeConnectionId}`;
 
     const headers = this.getAuthHeaders();
     const eventSourceInitDict = { headers };
 
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
+
+    this.subscribeConnection.onopen = (e: any) => {
+      // console.log('Resetting retry timer...')
+      this.reconnectFreqSecs = 1;
+    }
+
     this.subscribeConnection.onerror = (error: any) => {
       this.subscribeConnection.close();
       if (
@@ -221,6 +247,7 @@ class Bitloops {
             this.authOptions?.authenticationType === AuthTypes.FirebaseUser &&
             this.authOptions?.refreshTokenFunction
           ) {
+            /** On Auth error we can retry with same connId */
             const newAccessToken = await this.authOptions.refreshTokenFunction();
             if (newAccessToken) {
               this.authOptions.user.accessToken = newAccessToken;
@@ -230,6 +257,12 @@ class Bitloops {
             } else reject(error);
           }
         });
+      } else {
+        /** Network error, connId is garbage, need to 
+         * TODO re-subscribe and fetch
+         * a new One when reconnecting
+          TODO re-subscribe for new Conn-Id with list of topics */
+        this.sseReconnect();
       }
     };
   }

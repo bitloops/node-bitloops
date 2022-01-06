@@ -1,5 +1,5 @@
 import axios from 'axios';
-import EventSource, { ReadyState } from 'eventsource';
+import EventSource from 'eventsource';
 
 export enum AuthTypes {
   Anonymous = 'Anonymous',
@@ -51,6 +51,7 @@ class Bitloops {
   private subscribeConnection: EventSource;
   private subscribeConnectionId: string = '';
   private reconnectFreqSecs: number = 1;
+  private eventMap = new Map();
 
   constructor(config: BitloopsConfig) {
     this.config = config;
@@ -129,6 +130,7 @@ class Bitloops {
   }
 
   public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void): Promise<UnSubscribe> {
+    this.eventMap.set(namedEvent, callback);
     const subscribeUrl = `${this.httpSecure()}://${this.config.server}/bitloops/events/subscribe/${
       this.subscribeConnectionId
     }`;
@@ -156,8 +158,8 @@ class Bitloops {
 
     return () => {
       this.subscribeConnection.removeEventListener(namedEvent, listenerCb);
-      // Remove topic from state
-      // Close connection when topics=0
+      this.eventMap.delete(namedEvent);
+      if (this.eventMap.size === 0) this.subscribeConnection.close();
     }
   }
 
@@ -217,8 +219,14 @@ class Bitloops {
     setTimeout(() => {
       // console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
       this.setupEventSource();
-      this.reconnectFreqSecs = this.reconnectFreqSecs >= 64 ? 64 : this.reconnectFreqSecs * 2;
+      this.reconnectFreqSecs = this.reconnectFreqSecs >= 60 ? 60 : this.reconnectFreqSecs * 2;
     }, this.reconnectFreqSecs * 1000);
+  }
+
+  private async resubscribe() {
+    this.eventMap.forEach((callback, namedEvent) => {
+      this.subscribe(namedEvent, callback);
+    })
   }
 
   private setupEventSource() {
@@ -228,6 +236,7 @@ class Bitloops {
     const eventSourceInitDict = { headers };
 
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
+    this.resubscribe();
 
     this.subscribeConnection.onopen = (e: any) => {
       // console.log('Resetting retry timer...')
@@ -258,10 +267,6 @@ class Bitloops {
           }
         });
       } else {
-        /** Network error, connId is garbage, need to 
-         * TODO re-subscribe and fetch
-         * a new One when reconnecting
-          TODO re-subscribe for new Conn-Id with list of topics */
         this.sseReconnect();
       }
     };

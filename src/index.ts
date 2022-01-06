@@ -41,12 +41,17 @@ export type BitloopsConfig = {
   messagingSenderId: string;
 };
 
+/** Removes subscribe listener */
+type UnSubscribe = () => void;
+
 class Bitloops {
   config: BitloopsConfig;
   authType: AuthTypes;
   authOptions: AuthenticationOptionsType | undefined;
-  subscribeConnection: EventSource;
-  subscribeConnectionId: string = '';
+  private subscribeConnection: EventSource;
+  private subscribeConnectionId: string = '';
+  private reconnectFreqSecs: number = 1;
+  private eventMap = new Map();
 
   constructor(config: BitloopsConfig) {
     this.config = config;
@@ -124,7 +129,8 @@ class Bitloops {
     return true;
   }
 
-  public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void) {
+  public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void): Promise<UnSubscribe> {
+    this.eventMap.set(namedEvent, callback);
     const subscribeUrl = `${this.httpSecure()}://${this.config.server}/bitloops/events/subscribe/${
       this.subscribeConnectionId
     }`;
@@ -141,12 +147,20 @@ class Bitloops {
 
     if (!this.subscribeConnectionId) {
       this.subscribeConnectionId = response.data;
-      this.initializeSubscribeConnection();
+      this.setupEventSource();
     }
 
-    this.subscribeConnection.addEventListener(namedEvent, (event) => {
+    const listenerCb = (event: MessageEvent<any>) => {
       callback(JSON.parse(event.data));
-    });
+    }
+
+    this.subscribeConnection.addEventListener(namedEvent, listenerCb);
+
+    return () => {
+      this.subscribeConnection.removeEventListener(namedEvent, listenerCb);
+      this.eventMap.delete(namedEvent);
+      if (this.eventMap.size === 0) this.subscribeConnection.close();
+    }
   }
 
   private getAuthHeaderValues(
@@ -201,13 +215,34 @@ class Bitloops {
     return headers;
   }
 
-  private initializeSubscribeConnection() {
+  private sseReconnect() {
+    setTimeout(() => {
+      // console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
+      this.setupEventSource();
+      this.reconnectFreqSecs = this.reconnectFreqSecs >= 60 ? 60 : this.reconnectFreqSecs * 2;
+    }, this.reconnectFreqSecs * 1000);
+  }
+
+  private async resubscribe() {
+    this.eventMap.forEach((callback, namedEvent) => {
+      this.subscribe(namedEvent, callback);
+    })
+  }
+
+  private setupEventSource() {
     const url = `${this.httpSecure()}://${this.config.server}/bitloops/events/${this.subscribeConnectionId}`;
 
     const headers = this.getAuthHeaders();
     const eventSourceInitDict = { headers };
 
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
+    this.resubscribe();
+
+    this.subscribeConnection.onopen = (e: any) => {
+      // console.log('Resetting retry timer...')
+      this.reconnectFreqSecs = 1;
+    }
+
     this.subscribeConnection.onerror = (error: any) => {
       this.subscribeConnection.close();
       if (
@@ -221,6 +256,7 @@ class Bitloops {
             this.authOptions?.authenticationType === AuthTypes.FirebaseUser &&
             this.authOptions?.refreshTokenFunction
           ) {
+            /** On Auth error we can retry with same connId */
             const newAccessToken = await this.authOptions.refreshTokenFunction();
             if (newAccessToken) {
               this.authOptions.user.accessToken = newAccessToken;
@@ -230,6 +266,8 @@ class Bitloops {
             } else reject(error);
           }
         });
+      } else {
+        this.sseReconnect();
       }
     };
   }

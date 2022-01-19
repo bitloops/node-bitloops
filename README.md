@@ -39,24 +39,24 @@ const bitloopsConfig = {
   }
 }
 
-bitloops.initialize(bitloopsConfig);
+const bitloops = Bitloops.initialize(bitloopsConfig);
 
-bitloops.auth.authorizeWithUsername('username', 'email', 'password');
-bitloops.auth.authorizeWithEmail('email', 'password');
-bitloops.auth.authorizeWithEmailLink('email');
-bitloops.auth.authorizeWithEmailLinkVerification('link');
+bitloops.auth.authenticateWithUsername('username', 'email', 'password');
+bitloops.auth.authenticateWithEmail('email', 'password');
+bitloops.auth.authenticateWithEmailLink('email');
+bitloops.auth.authenticateWithEmailLinkVerification('link');
 bitloops.auth.forgotPassword('email', 'username');
 bitloops.auth.forgotPassword('email');
 bitloops.auth.forgotPasswordLink('link');
 bitloops.auth.forgotPasswordLink('link', 'new-password');
 
-bitloops.auth.authorizeWithGoogle();
+bitloops.auth.authenticateWithGoogle();
 bitloops.auth.registerWithGoogle();
 bitloops.auth.addGoogle();
-bitloops.auth.authorizeWithGitHub();
+bitloops.auth.authenticateWithGitHub();
 bitloops.auth.registerWithGitHub();
 bitloops.auth.addGitHub();
-bitloops.auth.authorizeWithTwitter();
+bitloops.auth.authenticateWithTwitter();
 bitloops.auth.registerWithTwitter();
 bitloops.auth.addTwitter();
 

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import EventSource from 'eventsource';
+import auth from './auth';
 
 export enum AuthTypes {
   Anonymous = 'Anonymous',
@@ -20,17 +21,27 @@ export interface IAuthenticationOptions {
 }
 
 export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
+  authenticationType: AuthTypes.X_API_KEY;
   token: string;
   refreshTokenFunction?: never;
 }
 
 export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
+  authenticationType: AuthTypes.FirebaseUser;
   providerId: string;
   user: IFirebaseUser;
   refreshTokenFunction?: () => Promise<string | null>;
 }
+export interface IBitloopsAuthenticationOptions extends IAuthenticationOptions {
+  authenticationType: AuthTypes.User;
+  providerId: string;
+  clientId: string;
+}
 
-export type AuthenticationOptionsType = IFirebaseAuthenticationOptions | IAPIAuthenticationOptions;
+export type AuthenticationOptionsType =
+  | IFirebaseAuthenticationOptions
+  | IAPIAuthenticationOptions
+  | IBitloopsAuthenticationOptions;
 
 export type BitloopsConfig = {
   apiKey: string;
@@ -39,6 +50,7 @@ export type BitloopsConfig = {
   ssl?: boolean;
   workspaceId: string;
   messagingSenderId: string;
+  auth?: AuthenticationOptionsType;
 };
 
 /** Removes subscribe listener */
@@ -48,12 +60,16 @@ class Bitloops {
   config: BitloopsConfig;
   authType: AuthTypes;
   authOptions: AuthenticationOptionsType | undefined;
+  auth = auth;
   private subscribeConnection: EventSource;
   private subscribeConnectionId: string = '';
   private reconnectFreqSecs: number = 1;
   private eventMap = new Map();
 
   constructor(config: BitloopsConfig) {
+    this.authOptions = config.auth;
+    this.auth.setAuthOptions(config.auth);
+    this.auth.setBitloopsConfig(config);
     this.config = config;
   }
 
@@ -61,7 +77,7 @@ class Bitloops {
     return new Bitloops(config);
   }
 
-  public authenticate(options: IFirebaseAuthenticationOptions | IAPIAuthenticationOptions): void {
+  public authenticate(options: AuthenticationOptionsType): void {
     this.authOptions = options;
   }
 
@@ -152,7 +168,7 @@ class Bitloops {
 
     const listenerCb = (event: MessageEvent<any>) => {
       callback(JSON.parse(event.data));
-    }
+    };
 
     this.subscribeConnection.addEventListener(namedEvent, listenerCb);
 
@@ -160,7 +176,7 @@ class Bitloops {
       this.subscribeConnection.removeEventListener(namedEvent, listenerCb);
       this.eventMap.delete(namedEvent);
       if (this.eventMap.size === 0) this.subscribeConnection.close();
-    }
+    };
   }
 
   private getAuthHeaderValues(
@@ -226,7 +242,7 @@ class Bitloops {
   private async resubscribe() {
     this.eventMap.forEach((callback, namedEvent) => {
       this.subscribe(namedEvent, callback);
-    })
+    });
   }
 
   private setupEventSource() {
@@ -241,7 +257,7 @@ class Bitloops {
     this.subscribeConnection.onopen = (e: any) => {
       // console.log('Resetting retry timer...')
       this.reconnectFreqSecs = 1;
-    }
+    };
 
     this.subscribeConnection.onerror = (error: any) => {
       this.subscribeConnection.close();

@@ -1,10 +1,18 @@
-import { AuthTypes, BitloopsConfig } from './index';
+import { v4 as uuid } from 'uuid';
+import { AuthTypes, BitloopsConfig, IBitloopsAuthenticationOptions } from './index';
 import { AuthenticationOptionsType } from '.';
+import Bitloops from './index';
+import { BitloopsUser } from './definitions';
 
-type BitloopsUser = {};
 class auth {
   private static authOptions?: AuthenticationOptionsType;
   private static bitloopsConfig: BitloopsConfig;
+  private static bitloops: Bitloops;
+  private static authChangeCallback: ((user: BitloopsUser) => void) | null;
+
+  static setBitloops(bitloops: Bitloops) {
+    auth.bitloops = bitloops;
+  }
 
   static setAuthOptions(options?: AuthenticationOptionsType) {
     auth.authOptions = options;
@@ -15,28 +23,37 @@ class auth {
   }
 
   static authenticateWithGoogle() {
-    if (this.authOptions?.authenticationType !== AuthTypes.User) throw new Error('Auth type must be User');
-
-    const url = `${this.bitloopsConfig.ssl === false ? 'http' : 'https'}://${
-      this.bitloopsConfig.server
-    }/bitloops/auth/google?client_id${this.authOptions.clientId}`;
+    if (auth.bitloops.authOptions?.authenticationType !== AuthTypes.User) throw new Error('Auth type must be User');
+    const sessionUuid = uuid();
+    const url = `${auth.bitloops.config.ssl === false ? 'http' : 'https'}://${
+      auth.bitloops.config.server
+    }/bitloops/auth/google?client_id=${auth.bitloops.authOptions.clientId}&provider_id=${auth.bitloops.authOptions.providerId}&session_uuid=${sessionUuid}`;
     if (typeof window !== 'undefined') {
-      window.location.href = url;
+      window.open(url, '_blank');
+      auth.bitloops.subscribe(`workflow-events.auth:${auth.bitloops.authOptions.providerId}:${sessionUuid}`, (user: BitloopsUser) => {
+        if (auth.authChangeCallback) auth.authChangeCallback(user);
+      })
     }
+  }
+
+  static clear() {
+    const clearedAuthOptions = auth.bitloops.authOptions as IBitloopsAuthenticationOptions;
+    // TODO communicate logout to REST 
+    clearedAuthOptions.token = null;
+    if (auth.authChangeCallback) auth.authChangeCallback(null);
+    auth.bitloops.authOptions = clearedAuthOptions;
   }
 
   registerWithGoogle() {}
   getUser() {}
-  clear() {}
 
-  onAuthStateChange(authChangeCb: (user: BitloopsUser) => void) {}
-  //   onAuthStateChange(user: BitloopsUser) {
-  //     if (user) {
-  //       // Do stuff when authenticated
-  //     } else {
-  //       // Do stuff if authentication is cleared
-  //     }
-  //   }
+  static onAuthStateChange(authChangeCallback: (user: BitloopsUser) => void) {
+    if (auth.bitloops.authOptions && auth.bitloops.authOptions.authenticationType === AuthTypes.User) {
+      auth.authChangeCallback = authChangeCallback;
+    } else {
+
+    }
+  }
 }
 
 export default auth;

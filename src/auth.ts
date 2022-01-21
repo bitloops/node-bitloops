@@ -27,7 +27,7 @@ class auth {
     const sessionUuid = uuid();
     const url = `${auth.bitloops.config.ssl === false ? 'http' : 'https'}://${
       auth.bitloops.config.server
-    }/bitloops/auth/google?client_id=${auth.bitloops.authOptions.clientId}&provider_id=${auth.bitloops.authOptions.providerId}&session_uuid=${sessionUuid}`;
+    }/bitloops/auth/google?client_id=${auth.bitloops.authOptions.clientId}&provider_id=${auth.bitloops.authOptions.providerId}&workspace_id=${auth.bitloops.config.workspaceId}&session_uuid=${sessionUuid}`;
     if (typeof window !== 'undefined') {
       window.open(url, '_blank');
       auth.bitloops.subscribe(`workflow-events.auth:${auth.bitloops.authOptions.providerId}:${sessionUuid}`, (user: BitloopsUser) => {

@@ -23,8 +23,7 @@ $ yarn add bitloops
 ### TypeScript Frontend usage Example
 
 ```ts
-import Bitloops, { AuthTypes } from 'bitloops';
-import { getAuth, onAuthStateChanged, onAuthStateChanged } from 'firebase/auth'; // If you are using Firebase
+import Bitloops, { AuthTypes, BitloopsUser, getAuth } from 'bitloops';
 
 // You will get this from your Console in your Workflow information
 const bitloopsConfig = {
@@ -33,52 +32,46 @@ const bitloopsConfig = {
 	environmentId: "3c42a5ef-fe21-4b50-8128-8596ea47da93",
 	workspaceId: "4f7a0fc5-fe2f-450a-b246-11a0873e91f0",
 	messagingSenderId: "742387243782",
+  auth: {
+    authenticationType: AuthTypes.User,
+    providerId: 'myProviderId', // You create this in the Bitloops Console
+    clientId: 'myWebAppId', // You create this in the Bitloops Console
+  }
 }
 
-bitloops.initialize(bitloopsConfig);
+const bitloops = Bitloops.initialize(bitloopsConfig);
 
-const auth = getAuth();
-const refreshTokenFunction =
-      (): Promise<string | null> => new Promise<string | null>((resolve, reject) => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-          unsubscribe();
-          if (user) {
-            getIdToken(user, true).then((idToken: string) => {
-              resolve(idToken);
-            }, (error) => {
-              reject(error);
-            });
-          } else {
-            resolve(null);
-          }
-        });
-      });
-onAuthStateChanged(auth, (user) => {
+bitloops.auth.authenticateWithUsername('username', 'email', 'password');
+bitloops.auth.authenticateWithEmail('email', 'password');
+bitloops.auth.authenticateWithEmailLink('email');
+bitloops.auth.authenticateWithEmailLinkVerification('link');
+bitloops.auth.forgotPassword('email', 'username');
+bitloops.auth.forgotPassword('email');
+bitloops.auth.forgotPasswordLink('link');
+bitloops.auth.forgotPasswordLink('link', 'new-password');
+
+bitloops.auth.authenticateWithGoogle();
+bitloops.auth.registerWithGoogle();
+bitloops.auth.addGoogle();
+bitloops.auth.authenticateWithGitHub();
+bitloops.auth.registerWithGitHub();
+bitloops.auth.addGitHub();
+bitloops.auth.authenticateWithTwitter();
+bitloops.auth.registerWithTwitter();
+bitloops.auth.addTwitter();
+
+bitloops.auth.getUser();
+bitloops.auth.clear();
+
+bitloops.auth.onAuthStateChange((user: BitloopsUser) => {
   if (user) {
-    // If you are using Firebase authentication you need to pass
-	// the user auth data as context for your web requests
-    bitloops.authenticate({
-		authenticationType: AuthTypes.FirebaseUser,
-		providerId: 'myProviderId', // You set this in the Bitloops Console
-		user,
-    refreshTokenFunction, // used to refresh the token when it expires
-	});
+    // Do stuff when authenticated
   } else {
-    // User is signed out
-    bitloops.signOut();
+    // Do stuff if authentication is cleared
   }
 });
 
 ...
-// If you want to pass a username/password combo you should first initialize
-// and then authenticate using a username / password combo over https
-
-// await bitloops.initialize(bitloopsConfig);
-// bitloops.authenticate({
-// 	provider: AuthProviders.BITLOOPS_USER_PASS,
-// 	username,
-// 	password,
-// });
 
 const userInfo = await bitloops.request('db7a654a-1e2c-4f9c-b2d0-8ff2e2d6cbfe', '70e3084f-9056-4905-ac45-a5b65c926b1b');
 const productInfo = await bitloops.request('64f264ad-76b1-4ba1-975c-c7b9795e55ce', '70e3084f-9056-4905-ac45-a5b65c926b1b', { productId: '7829' });

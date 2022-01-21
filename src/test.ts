@@ -34,7 +34,7 @@ const test = async () => {
     const workspaces = await bitloops.r('00cdd9c6-c6e9-40f2-b0c0-8903e33ef279', '8214cbd7-4741-46a4-bb28-ae7ad0f33cc4');
     console.log(workspaces);
 
-    await bitloops.subscribe('workflowEvents.update', (data) => {
+    await bitloops.subscribe('workflow-events.update', (data) => {
       console.log('workflow.Update received', data);
     });
 

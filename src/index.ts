@@ -313,7 +313,6 @@ class Bitloops {
         // Do something before request is sent
         const user = auth.getUser();
         const token = user?.accessToken;
-        console.log('Setting token in interceptor');
         if (!config.headers) config.headers = {};
         config.headers['Authorization'] = `User ${token}`;
         return config;
@@ -336,13 +335,11 @@ class Bitloops {
           const user = auth.getUser();
           // todo skip step instead of throw
           if (!user?.refreshToken) throw new Error('no refresh token');
-          console.error('about to refresh token');
           const body = {
             refreshToken: user.refreshToken,
             clientId: (config?.auth as IBitloopsAuthenticationOptions).clientId,
             providerId: (config?.auth as IBitloopsAuthenticationOptions).providerId,
           };
-          console.log('Refresh body', body, url);
           // const response = await axios.post(url, body);
           const [response, error] = await this.axiosHandler({ url, data: body }, axios);
           if (error || response === null) {
@@ -354,7 +351,6 @@ class Bitloops {
           }
           const newAccessToken = response?.data?.accessToken;
           const newRefreshToken = response?.data?.refreshToken;
-          console.error('new Response after 401', response.data);
           // TODO store tokens separately?
           const newUser: BitloopsUser = { ...user, accessToken: newAccessToken, refreshToken: newRefreshToken };
           localStorage.setItem(LOCAL_STORAGE.USER_DATA, JSON.stringify(newUser));

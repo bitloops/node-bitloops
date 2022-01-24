@@ -19,8 +19,12 @@ class Bitloops {
     this.authOptions = config.auth;
     this.config = config;
     sessionStorage.setItem('bitloops.config', JSON.stringify(config));
-    this.auth.setAuthOptions(config.auth);
     this.auth.setBitloops(this);
+  }
+
+  public static getConfig() {
+    const configString = sessionStorage.getItem('bitloops.config');
+    return configString ? JSON.parse(configString) as BitloopsConfig : null;
   }
 
   public static initialize(config: BitloopsConfig): Bitloops {
@@ -185,29 +189,15 @@ class Bitloops {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Unauthorized ' };
     const bitloopsConfigString = sessionStorage.getItem('bitloops.config');
     const bitloopsConfig = bitloopsConfigString ? JSON.parse(bitloopsConfigString) as BitloopsConfig : null;
-    if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User) {
-      const authOptionsString = sessionStorage.getItem('bitloops.auth.options');
-      const authOptions = authOptionsString ? JSON.parse(authOptionsString) as IAuthenticationOptions : null;
-      const bitloopsAuthUserDataString = localStorage.getItem('bitloops.auth.userData');
-      const bitloopsAuthUserData = bitloopsAuthUserDataString ? JSON.parse(bitloopsAuthUserDataString) as BitloopsUser : null;
-      if (authOptions?.authenticationType === AuthTypes.User) {
-        const bitloopsUserAuthOptions = authOptions as IBitloopsAuthenticationOptions;
-        headers['provider-id'] = bitloopsUserAuthOptions.providerId;
-        headers['client-id'] = bitloopsUserAuthOptions.clientId;
-      }
-      if (bitloopsAuthUserData?.uid) {
-        headers['Authorization'] = `User ${bitloopsAuthUserData.accessToken}`;
-      }
+    const config = Bitloops.getConfig();
+    const user = auth.getUser();
+    if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User && user?.uid) {
+      const bitloopsUserAuthOptions = config?.auth as IBitloopsAuthenticationOptions;
+      headers['provider-id'] = bitloopsUserAuthOptions.providerId;
+      headers['client-id'] = bitloopsUserAuthOptions.clientId;
+      headers['Authorization'] = `User ${user.accessToken}`;
+      headers['session-uuid'] = sessionStorage.getItem('sessionUuid');
     }
-    // if (!this.authOptions) {
-    //   throw Error('Not authenticated');
-    // }
-    // const authHeaders = this.getAuthHeaderValues(this.authOptions.authenticationType, this.authOptions);
-    // const headers = {
-    //   'Content-Type': 'application/json',
-    //   Authorization: `${this.authOptions.authenticationType} ${authHeaders.token}`,
-    // };
-    // if (authHeaders.providerId) headers['Provider-Id'] = authHeaders.providerId;
     return headers;
   }
 

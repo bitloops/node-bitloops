@@ -42,7 +42,7 @@ export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
 }
 
 export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
-  authenticationType: AuthTypes
+  authenticationType: AuthTypes;
   providerId: string;
   user: IFirebaseUser;
   refreshTokenFunction?: () => Promise<string | null>;

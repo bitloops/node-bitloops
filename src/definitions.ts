@@ -1,3 +1,5 @@
+import { AxiosError, AxiosResponse } from 'axios';
+
 export type BitloopsUser = {
   displayName: string;
   firstName: string;
@@ -68,3 +70,10 @@ export type BitloopsConfig = {
   messagingSenderId: string;
   auth?: AuthenticationOptionsType;
 };
+
+export type AxiosHandlerOutcome = [AxiosResponse, null] | [AxiosResponse | null, AxiosError] | [null, unknown];
+
+export const enum LOCAL_STORAGE {
+  USER_DATA = 'bitloops.auth.userData',
+  BITLOOPS_CONFIG = 'bitloops.config',
+}

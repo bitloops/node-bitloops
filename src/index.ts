@@ -1,7 +1,18 @@
-import axios from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import EventSource from 'eventsource';
 import auth from './auth';
-import { AuthenticationOptionsType, AuthTypes, BitloopsConfig, BitloopsUser, IAuthenticationOptions, IBitloopsAuthenticationOptions, IFirebaseAuthenticationOptions, Unsubscribe } from './definitions';
+import {
+  AuthenticationOptionsType,
+  AuthTypes,
+  AxiosHandlerOutcome,
+  BitloopsConfig,
+  BitloopsUser,
+  IAuthenticationOptions,
+  IBitloopsAuthenticationOptions,
+  IFirebaseAuthenticationOptions,
+  Unsubscribe,
+  LOCAL_STORAGE,
+} from './definitions';
 
 export { AuthTypes };
 
@@ -14,17 +25,19 @@ class Bitloops {
   private reconnectFreqSecs: number = 1;
   private eventMap = new Map();
   private static self: Bitloops;
+  private static axiosInstance;
 
   constructor(config: BitloopsConfig) {
     this.authOptions = config.auth;
     this.config = config;
-    sessionStorage.setItem('bitloops.config', JSON.stringify(config));
+    localStorage.setItem(LOCAL_STORAGE.BITLOOPS_CONFIG, JSON.stringify(config));
     this.auth.setBitloops(this);
+    Bitloops.axiosInstance = this.interceptAxiosInstance();
   }
 
   public static getConfig() {
-    const configString = sessionStorage.getItem('bitloops.config');
-    return configString ? JSON.parse(configString) as BitloopsConfig : null;
+    const configString = localStorage.getItem(LOCAL_STORAGE.BITLOOPS_CONFIG);
+    return configString ? (JSON.parse(configString) as BitloopsConfig) : null;
   }
 
   public static initialize(config: BitloopsConfig): Bitloops {
@@ -67,12 +80,15 @@ class Bitloops {
         return error.response;
       });
     if (
-      response.status === 401 && this.authOptions !== undefined &&
+      response.status === 401 &&
+      this.authOptions !== undefined &&
       this.authOptions.authenticationType === AuthTypes.FirebaseUser &&
       (this.authOptions as IFirebaseAuthenticationOptions).refreshTokenFunction
     ) {
-      const firebaseAuthOptions = (this.authOptions as IFirebaseAuthenticationOptions);
-      const newAccessToken = firebaseAuthOptions.refreshTokenFunction ? await firebaseAuthOptions.refreshTokenFunction() : null;
+      const firebaseAuthOptions = this.authOptions as IFirebaseAuthenticationOptions;
+      const newAccessToken = firebaseAuthOptions.refreshTokenFunction
+        ? await firebaseAuthOptions.refreshTokenFunction()
+        : null;
       if (newAccessToken) {
         this.authOptions['user'].accessToken = newAccessToken;
         (headers['Authorization'] = `${this.authOptions.authenticationType} ${newAccessToken}`),
@@ -108,25 +124,53 @@ class Bitloops {
   }
 
   public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void): Promise<Unsubscribe> {
-    if (this.eventMap.size === 0) sessionStorage.removeItem('bitloops.subscriptionConnectionId');
+    if (this.eventMap.size === 0) localStorage.removeItem('bitloops.subscriptionConnectionId');
     this.eventMap.set(namedEvent, callback);
-    const subscriptionConnectionId = sessionStorage.getItem('bitloops.subscriptionConnectionId');
+    const subscriptionConnectionId = localStorage.getItem('bitloops.subscriptionConnectionId');
     const subscribeUrl = `${this.httpSecure()}://${this.config.server}/bitloops/events/subscribe/${
       subscriptionConnectionId ? subscriptionConnectionId : ''
     }`;
 
     const headers = this.getAuthHeaders();
-    
-    const response = await axios.post<string>(
-      subscribeUrl,
-      {
-        topics: [namedEvent],
-        workspaceId: this.config.workspaceId,
-      },
-      { headers }
-    );
+
+    const [response, error] = await this.axiosHandler({
+      url: subscribeUrl,
+      method: 'POST',
+      headers,
+      data: { topics: [namedEvent], workspaceId: this.config.workspaceId },
+    });
+    if (error || response === null) {
+      // if (response?.status === 401) {
+      //   console.error('unauthorized');
+      //   const config = Bitloops.getConfig();
+      //   const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server}/bitloops/auth/refreshToken`;
+      //   const user = auth.getUser();
+      //   // todo skip step instead of throw
+      //   if (!user?.refreshToken) throw new Error('no refresh token');
+      //   const [response, error] = await this.axiosHandler({
+      //     url,
+      //     method: 'POST',
+      //     data: {
+      //       refreshToken: user.refreshToken,
+      //       clientId: (config?.auth as IBitloopsAuthenticationOptions).clientId,
+      //       providerId: (config?.auth as IBitloopsAuthenticationOptions).providerId,
+      //     },
+      //   });
+      //   const newAccessToken = response?.data?.accessToken;
+      //   const newRefreshToken = response?.data?.refreshToken;
+      // }
+      throw error;
+    }
+    // const response = await axios.post<string>(
+    //   subscribeUrl,
+    //   {
+    //     topics: [namedEvent],
+    //     workspaceId: this.config.workspaceId,
+    //   },
+    //   { headers }
+    // );
     if (!subscriptionConnectionId) {
-      sessionStorage.setItem('bitloops.subscriptionConnectionId', response.data);
+      localStorage.setItem('bitloops.subscriptionConnectionId', response.data);
       this.setupEventSource(true);
     }
 
@@ -187,16 +231,14 @@ class Bitloops {
 
   private getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Unauthorized ' };
-    const bitloopsConfigString = sessionStorage.getItem('bitloops.config');
-    const bitloopsConfig = bitloopsConfigString ? JSON.parse(bitloopsConfigString) as BitloopsConfig : null;
     const config = Bitloops.getConfig();
     const user = auth.getUser();
-    if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User && user?.uid) {
+    if (config?.auth?.authenticationType === AuthTypes.User && user?.uid) {
       const bitloopsUserAuthOptions = config?.auth as IBitloopsAuthenticationOptions;
       headers['provider-id'] = bitloopsUserAuthOptions.providerId;
       headers['client-id'] = bitloopsUserAuthOptions.clientId;
       headers['Authorization'] = `User ${user.accessToken}`;
-      headers['session-uuid'] = sessionStorage.getItem('sessionUuid');
+      headers['session-uuid'] = localStorage.getItem('sessionUuid');
     }
     return headers;
   }
@@ -216,7 +258,7 @@ class Bitloops {
   }
 
   private setupEventSource(initialRun = false) {
-    const subscriptionConnectionId = sessionStorage.getItem('bitloops.subscriptionConnectionId');
+    const subscriptionConnectionId = localStorage.getItem('bitloops.subscriptionConnectionId');
     const url = `${this.httpSecure()}://${this.config.server}/bitloops/events/${subscriptionConnectionId}`;
 
     const headers = this.getAuthHeaders();
@@ -233,19 +275,23 @@ class Bitloops {
     this.subscribeConnection.onerror = (error: any) => {
       this.subscribeConnection.close();
       if (
-        error.status === 401 && this.authOptions &&
+        error.status === 401 &&
+        this.authOptions &&
         this.authOptions.authenticationType === AuthTypes.FirebaseUser &&
         (this.authOptions as IFirebaseAuthenticationOptions).refreshTokenFunction
       ) {
         new Promise(async (resolve, reject) => {
           if (
-            error.status === 401 && this.authOptions &&
+            error.status === 401 &&
+            this.authOptions &&
             this.authOptions?.authenticationType === AuthTypes.FirebaseUser &&
             (this.authOptions as IFirebaseAuthenticationOptions).refreshTokenFunction
           ) {
             /** On Auth error we can retry with same connId */
-            const firebaseAuthOptions = (this.authOptions as IFirebaseAuthenticationOptions);
-            const newAccessToken = firebaseAuthOptions.refreshTokenFunction ? await firebaseAuthOptions.refreshTokenFunction() : null;
+            const firebaseAuthOptions = this.authOptions as IFirebaseAuthenticationOptions;
+            const newAccessToken = firebaseAuthOptions.refreshTokenFunction
+              ? await firebaseAuthOptions.refreshTokenFunction()
+              : null;
             if (newAccessToken) {
               this.authOptions['user'].accessToken = newAccessToken;
               (headers['Authorization'] = `${this.authOptions.authenticationType} ${newAccessToken}`),
@@ -258,6 +304,71 @@ class Bitloops {
         this.sseReconnect();
       }
     };
+  }
+
+  private async axiosHandler(config: AxiosRequestConfig): Promise<AxiosHandlerOutcome> {
+    try {
+      const res = await Bitloops.axiosInstance(config);
+      return [res, null];
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return [error.response ?? null, error];
+      }
+      return [null, error];
+    }
+  }
+
+  /** [1] https://thedutchlab.com/blog/using-axios-interceptors-for-refreshing-your-api-token
+   *  [2] https://www.npmjs.com/package/axios#interceptors
+   */
+  private interceptAxiosInstance(): AxiosInstance {
+    const instance = axios.create();
+    // Request interceptor for API calls
+    instance.interceptors.request.use(
+      async (config) => {
+        // Do something before request is sent
+        const user = auth.getUser();
+        const token = user?.accessToken;
+        if (!config.headers) config.headers = {};
+        config.headers['Authorization'] = `Bearer ${token}`;
+        return config;
+      },
+      (error) => {
+        // Do something with request error
+        Promise.reject(error);
+      }
+    );
+
+    // Allow automatic updating of access token
+    instance.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (error.response.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          const config = Bitloops.getConfig();
+          const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server}/bitloops/auth/refreshToken`;
+          const user = auth.getUser();
+          // todo skip step instead of throw
+          if (!user?.refreshToken) throw new Error('no refresh token');
+          const response = await instance.post(url, {
+            refreshToken: user.refreshToken,
+            clientId: (config?.auth as IBitloopsAuthenticationOptions).clientId,
+            providerId: (config?.auth as IBitloopsAuthenticationOptions).providerId,
+          });
+          const newAccessToken = response?.data?.accessToken;
+          const newRefreshToken = response?.data?.refreshToken;
+          console.error('new Response after 401', response.data);
+          // TODO store tokens separately?
+          const newUser: BitloopsUser = { ...user, accessToken: newAccessToken, refreshToken: newRefreshToken };
+          localStorage.setItem(LOCAL_STORAGE.USER_DATA, JSON.stringify(newUser));
+
+          return instance.request(originalRequest);
+        }
+        return Promise.reject(error);
+      }
+    );
+    return instance;
   }
 }
 

@@ -1,6 +1,21 @@
 export type BitloopsUser = {
-  token: string;
+  displayName: string;
+  firstName: string;
+  lastName: string;
+  uid: string;
+  email: string;
+  emailVerified: string;
+  isAnonymous: boolean;
+  providerId: string;
+  clientId: string;
+  accessToken: string;
+  refreshToken: string;
+  photoURL?: string;
+  sessionState: string;
 } | null;
+
+/** Removes subscribe listener */
+export type Unsubscribe = () => void;
 
 export enum AuthTypes {
   Anonymous = 'Anonymous',
@@ -11,3 +26,45 @@ export enum AuthTypes {
   FirebaseUser = 'FirebaseUser',
   OAuth2 = 'OAuth2',
 }
+
+export interface IFirebaseUser {
+  accessToken: string;
+}
+
+export interface IAuthenticationOptions {
+  authenticationType: AuthTypes;
+}
+
+export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
+  authenticationType: AuthTypes;
+  token: string;
+  refreshTokenFunction?: never;
+}
+
+export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
+  authenticationType: AuthTypes
+  providerId: string;
+  user: IFirebaseUser;
+  refreshTokenFunction?: () => Promise<string | null>;
+}
+export interface IBitloopsAuthenticationOptions extends IAuthenticationOptions {
+  authenticationType: AuthTypes;
+  providerId: string;
+  clientId: string;
+  authChangeCallback: null | ((BitloopsUser) => void);
+}
+
+export type AuthenticationOptionsType =
+  | IFirebaseAuthenticationOptions
+  | IAPIAuthenticationOptions
+  | IBitloopsAuthenticationOptions;
+
+export type BitloopsConfig = {
+  apiKey: string;
+  server: string;
+  environmentId: string;
+  ssl?: boolean;
+  workspaceId: string;
+  messagingSenderId: string;
+  auth?: AuthenticationOptionsType;
+};

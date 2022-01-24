@@ -133,32 +133,16 @@ class Bitloops {
 
     const headers = this.getAuthHeaders();
 
-    const [response, error] = await this.axiosHandler({
-      url: subscribeUrl,
-      method: 'POST',
-      headers,
-      data: { topics: [namedEvent], workspaceId: this.config.workspaceId },
-    });
+    const [response, error] = await this.axiosHandler(
+      {
+        url: subscribeUrl,
+        method: 'POST',
+        headers,
+        data: { topics: [namedEvent], workspaceId: this.config.workspaceId },
+      },
+      Bitloops.axiosInstance
+    );
     if (error || response === null) {
-      // if (response?.status === 401) {
-      //   console.error('unauthorized');
-      //   const config = Bitloops.getConfig();
-      //   const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server}/bitloops/auth/refreshToken`;
-      //   const user = auth.getUser();
-      //   // todo skip step instead of throw
-      //   if (!user?.refreshToken) throw new Error('no refresh token');
-      //   const [response, error] = await this.axiosHandler({
-      //     url,
-      //     method: 'POST',
-      //     data: {
-      //       refreshToken: user.refreshToken,
-      //       clientId: (config?.auth as IBitloopsAuthenticationOptions).clientId,
-      //       providerId: (config?.auth as IBitloopsAuthenticationOptions).providerId,
-      //     },
-      //   });
-      //   const newAccessToken = response?.data?.accessToken;
-      //   const newRefreshToken = response?.data?.refreshToken;
-      // }
       throw error;
     }
     // const response = await axios.post<string>(
@@ -306,9 +290,9 @@ class Bitloops {
     };
   }
 
-  private async axiosHandler(config: AxiosRequestConfig): Promise<AxiosHandlerOutcome> {
+  private async axiosHandler(config: AxiosRequestConfig, axiosInst: AxiosInstance): Promise<AxiosHandlerOutcome> {
     try {
-      const res = await Bitloops.axiosInstance(config);
+      const res = await axiosInst(config);
       return [res, null];
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -325,12 +309,13 @@ class Bitloops {
     const instance = axios.create();
     // Request interceptor for API calls
     instance.interceptors.request.use(
-      async (config) => {
+      (config) => {
         // Do something before request is sent
         const user = auth.getUser();
         const token = user?.accessToken;
+        console.log('Setting token in interceptor');
         if (!config.headers) config.headers = {};
-        config.headers['Authorization'] = `Bearer ${token}`;
+        config.headers['Authorization'] = `User ${token}`;
         return config;
       },
       (error) => {
@@ -351,11 +336,22 @@ class Bitloops {
           const user = auth.getUser();
           // todo skip step instead of throw
           if (!user?.refreshToken) throw new Error('no refresh token');
-          const response = await instance.post(url, {
+          console.error('about to refresh token');
+          const body = {
             refreshToken: user.refreshToken,
             clientId: (config?.auth as IBitloopsAuthenticationOptions).clientId,
             providerId: (config?.auth as IBitloopsAuthenticationOptions).providerId,
-          });
+          };
+          console.log('Refresh body', body, url);
+          // const response = await axios.post(url, body);
+          const [response, error] = await this.axiosHandler({ url, data: body }, axios);
+          if (error || response === null) {
+            // invalid refresh token
+            // clean refresh_token
+            // logout user
+            auth.clearAuthentication();
+            return Promise.reject(error);
+          }
           const newAccessToken = response?.data?.accessToken;
           const newRefreshToken = response?.data?.refreshToken;
           console.error('new Response after 401', response.data);

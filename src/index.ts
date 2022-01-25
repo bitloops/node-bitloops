@@ -13,6 +13,7 @@ import {
   Unsubscribe,
   LOCAL_STORAGE,
 } from './definitions';
+import { wait as sleepAsync } from './helpers';
 
 export { AuthTypes };
 
@@ -26,6 +27,7 @@ class Bitloops {
   private eventMap = new Map();
   private static self: Bitloops;
   private static axiosInstance;
+  private sseIsBeingInitialized: boolean = false;
 
   constructor(config: BitloopsConfig) {
     this.authOptions = config.auth;
@@ -124,12 +126,25 @@ class Bitloops {
   }
 
   public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void): Promise<Unsubscribe> {
-    if (this.eventMap.size === 0) localStorage.removeItem('bitloops.subscriptionConnectionId');
+    if (this.eventMap.size === 0) localStorage.removeItem(LOCAL_STORAGE.SUBSCRIPTION_ID);
     this.eventMap.set(namedEvent, callback);
-    const subscriptionConnectionId = localStorage.getItem('bitloops.subscriptionConnectionId');
-    const subscribeUrl = `${this.httpSecure()}://${this.config.server}/bitloops/events/subscribe/${
-      subscriptionConnectionId ? subscriptionConnectionId : ''
-    }`;
+    let subscriptionConnectionId = localStorage.getItem(LOCAL_STORAGE.SUBSCRIPTION_ID) ?? '';
+    // if ConId is = '' and SOMEONE ELSE has acquired the lock, is initializing the subscription
+    if (subscriptionConnectionId === '' && this.sseIsBeingInitialized) {
+      setTimeout(() => this.subscribe(namedEvent, callback), 100);
+    }
+    // subscriptionConnectionId = localStorage.getItem(LOCAL_STORAGE.SUBSCRIPTION_ID) ?? '';
+    if (subscriptionConnectionId === '' && this.sseIsBeingInitialized === false) {
+      this.sseIsBeingInitialized = true;
+    }
+
+    /**
+     * Becomes Critical section when subscriptionId = ''
+     * and sse connection is being Initialized
+     */
+    const subscribeUrl = `${this.httpSecure()}://${
+      this.config.server
+    }/bitloops/events/subscribe/${subscriptionConnectionId}`;
 
     const headers = this.getAuthHeaders();
 
@@ -143,25 +158,23 @@ class Bitloops {
       Bitloops.axiosInstance
     );
     if (error || response === null) {
-      throw error;
+      this.sseIsBeingInitialized = false;
+      this.eventMap.delete(namedEvent);
+      console.error(error);
+      return () => null;
     }
-    // const response = await axios.post<string>(
-    //   subscribeUrl,
-    //   {
-    //     topics: [namedEvent],
-    //     workspaceId: this.config.workspaceId,
-    //   },
-    //   { headers }
-    // );
     if (!subscriptionConnectionId) {
-      localStorage.setItem('bitloops.subscriptionConnectionId', response.data);
+      localStorage.setItem(LOCAL_STORAGE.SUBSCRIPTION_ID, response.data);
+      this.sseIsBeingInitialized = false;
       this.setupEventSource(true);
     }
+    /**
+     * End of critical section
+     */
 
     const listenerCallback = (event: MessageEvent<any>) => {
       callback(JSON.parse(event.data));
     };
-
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
     return () => {
@@ -280,6 +293,7 @@ class Bitloops {
               this.authOptions['user'].accessToken = newAccessToken;
               (headers['Authorization'] = `${this.authOptions.authenticationType} ${newAccessToken}`),
                 (this.subscribeConnection = new EventSource(url, eventSourceInitDict));
+              // TODO on.error need to be re-bound in this edge case
               resolve(true);
             } else reject(error);
           }
@@ -311,10 +325,13 @@ class Bitloops {
     instance.interceptors.request.use(
       (config) => {
         // Do something before request is sent
+        const bitloopsConfig = Bitloops.getConfig();
         const user = auth.getUser();
-        const token = user?.accessToken;
-        if (!config.headers) config.headers = {};
-        config.headers['Authorization'] = `User ${token}`;
+        if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User && user?.uid) {
+          const token = user?.accessToken;
+          if (!config.headers) config.headers = {};
+          config.headers['Authorization'] = `User ${token}`;
+        }
         return config;
       },
       (error) => {
@@ -328,7 +345,12 @@ class Bitloops {
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
-        if (error.response.status === 401 && !originalRequest._retry) {
+        const bitloopsConfig = Bitloops.getConfig();
+        if (
+          bitloopsConfig?.auth?.authenticationType === AuthTypes.User &&
+          error.response.status === 401 &&
+          !originalRequest._retry
+        ) {
           originalRequest._retry = true;
           const config = Bitloops.getConfig();
           const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server}/bitloops/auth/refreshToken`;
@@ -343,6 +365,7 @@ class Bitloops {
           // const response = await axios.post(url, body);
           const [response, error] = await this.axiosHandler({ url, data: body }, axios);
           if (error || response === null) {
+            console.log('Refresh token was invalid');
             // invalid refresh token
             // clean refresh_token
             // logout user
@@ -351,13 +374,12 @@ class Bitloops {
           }
           const newAccessToken = response?.data?.accessToken;
           const newRefreshToken = response?.data?.refreshToken;
-          // TODO store tokens separately?
           const newUser: BitloopsUser = { ...user, accessToken: newAccessToken, refreshToken: newRefreshToken };
+          console.log('Updated refresh token');
           localStorage.setItem(LOCAL_STORAGE.USER_DATA, JSON.stringify(newUser));
 
           return instance.request(originalRequest);
         }
-        return Promise.reject(error);
       }
     );
     return instance;

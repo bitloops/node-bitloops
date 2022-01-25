@@ -14,7 +14,7 @@ export type BitloopsUser = {
   refreshToken: string;
   photoURL?: string;
   sessionState: string;
-} | null;
+};
 
 /** Removes subscribe listener */
 export type Unsubscribe = () => void;
@@ -72,8 +72,13 @@ export type BitloopsConfig = {
 };
 
 export type AxiosHandlerOutcome = [AxiosResponse, null] | [AxiosResponse | null, AxiosError] | [null, unknown];
+export type AxiosHandlerOutcome2 = [AxiosResponse, null] | [AxiosResponse | null, AxiosError] | [null, unknown];
 
 export const enum LOCAL_STORAGE {
   USER_DATA = 'bitloops.auth.userData',
   BITLOOPS_CONFIG = 'bitloops.config',
+  SUBSCRIPTION_ID = 'bitloops.subscriptionConnectionId',
+  SESSION_UUID = 'sessionUuid',
+  // ACCESS_TOKEN = 'bitloops.auth.accessToken',
+  // REFRESH_TOKEN = 'bitloops.auth.refreshToken',
 }

@@ -4,7 +4,7 @@ import {
   AuthenticationOptionsType,
   BitloopsConfig,
   IBitloopsAuthenticationOptions,
-  IAuthenticationOptions,
+  LOCAL_STORAGE,
 } from './definitions';
 import Bitloops from './index';
 import { BitloopsUser } from './definitions';
@@ -16,7 +16,7 @@ class auth {
 
   static setBitloops(bitloops: Bitloops) {
     auth.bitloops = bitloops;
-    if (!localStorage.getItem('sessionUuid')) localStorage.setItem('sessionUuid', uuid());
+    if (!localStorage.getItem(LOCAL_STORAGE.SESSION_UUID)) localStorage.setItem(LOCAL_STORAGE.SESSION_UUID, uuid());
   }
 
   static authenticateWithGoogle() {
@@ -57,9 +57,9 @@ class auth {
 
   static async clearAuthentication() {
     // TODO communicate logout to REST
-    const user = auth.getUser() as BitloopsUser;
-    const configString = localStorage.getItem('bitloops.config');
-    const config = configString ? (JSON.parse(configString) as BitloopsConfig) : null;
+    console.log('logout called');
+    const user = auth.getUser();
+    const config = Bitloops.getConfig();
     if (user && config) {
       const { accessToken, clientId, providerId, refreshToken } = user;
       let body = {
@@ -67,7 +67,7 @@ class auth {
         clientId,
         providerId,
         refreshToken,
-        sessionUuid: localStorage.getItem('sessionUuid'),
+        sessionUuid: localStorage.getItem(LOCAL_STORAGE.SESSION_UUID),
         workspaceId: config.workspaceId,
       };
       const headers = {};
@@ -86,29 +86,37 @@ class auth {
 
   // Returns the user information stored in localStorage
   static getUser(): BitloopsUser | null {
-    const bitloopsAuthUserDataString = localStorage.getItem('bitloops.auth.userData');
+    const bitloopsAuthUserDataString = localStorage.getItem(LOCAL_STORAGE.USER_DATA);
     return bitloopsAuthUserDataString ? (JSON.parse(bitloopsAuthUserDataString) as BitloopsUser) : null;
   }
 
-  static onAuthStateChange(authChangeCallback: (user: BitloopsUser) => void) {
+  static onAuthStateChange(authChangeCallback: (user: BitloopsUser | null) => void) {
     // 1. User is unauthorized and subscribes to onAuthStateChange => we use the sessionUuid
     // 2. User is authorized and subscribed to onAuthStateChange => we use the sessionUuid
+
     const user = auth.getUser();
     const config = Bitloops.getConfig();
     // Checking if the correct auth type is being used else you cannot use onAuthStateChange
     if (config && config.auth?.authenticationType === AuthTypes.User) {
       const sessionUuid = localStorage.getItem('sessionUuid');
-      // Checking if user is already authenticated
-      // if (user && user.sessionState && user.accessToken) {
+      /**
+       * First trigger when code runs
+       */
+      authChangeCallback(user);
+
+      /**
+       * Subscribe for subsequent auth server events
+       */
+      // TODO remove async from subscribe
       const unsubscribe = auth.bitloops.subscribe(
         `workflow-events.auth:${(config?.auth as IBitloopsAuthenticationOptions).providerId}:${sessionUuid}`,
-        async (user: BitloopsUser) => {
+        (user: BitloopsUser) => {
           // If there is user information then we store it in our localStorage
           if (user && JSON.stringify(user) !== '{}') {
-            localStorage.setItem('bitloops.auth.userData', JSON.stringify(user));
+            localStorage.setItem(LOCAL_STORAGE.USER_DATA, JSON.stringify(user));
             authChangeCallback(user);
           } else {
-            localStorage.removeItem('bitloops.auth.userData');
+            localStorage.removeItem(LOCAL_STORAGE.USER_DATA);
             authChangeCallback(null);
           }
         }
@@ -118,6 +126,19 @@ class auth {
       throw new Error('Auth type must be User');
     }
   }
+
+  // static getAccessToken() {
+  //   const bitloopsAuthUserDataString = localStorage.getItem('bitloops.auth.userData');
+  //   return bitloopsAuthUserDataString ? (JSON.parse(bitloopsAuthUserDataString) as BitloopsUser).accessToken : null;
+  // }
+
+  // static setTokens(accessToken: string, refreshToken): void {
+  //   const user = auth.getUser();
+  //   if (user === null) throw new Error("User object doesn't exist");
+  //   user.accessToken = accessToken;
+  //   user.refreshToken = refreshToken;
+  //   localStorage.setItem(LOCAL_STORAGE.USER_DATA, JSON.stringify(user));
+  // }
 }
 
 export default auth;

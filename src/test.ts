@@ -13,7 +13,7 @@ const bitloopsConfig = {
   auth: {
     authenticationType: AuthTypes.X_API_KEY,
     token: 'xrPA9_%Hx-#R@+$6px2+WVj-Ndw^a4W2',
-  }
+  },
   // auth: {
   //   authenticationType: AuthTypes.FirebaseUser,
   //   providerId: 'myProviderId', // You set this in the Bitloops Console
@@ -26,7 +26,6 @@ const bitloopsConfig = {
 
 const test = async () => {
   const bitloops = Bitloops.initialize(bitloopsConfig);
- 
 
   console.log('ALL OK');
   bitloops.authenticate({

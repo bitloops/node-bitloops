@@ -111,6 +111,7 @@ class auth {
       const unsubscribe = auth.bitloops.subscribe(
         `workflow-events.auth:${(config?.auth as IBitloopsAuthenticationOptions).providerId}:${sessionUuid}`,
         (user: BitloopsUser) => {
+          console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage
           if (user && JSON.stringify(user) !== '{}') {
             localStorage.setItem(LOCAL_STORAGE.USER_DATA, JSON.stringify(user));

@@ -26,7 +26,7 @@ class Bitloops {
   private reconnectFreqSecs: number = 1;
   private eventMap = new Map();
   private static self: Bitloops;
-  private static axiosInstance;
+  private static axiosInstance: AxiosInstance;
   private sseIsBeingInitialized: boolean = false;
 
   constructor(config: BitloopsConfig) {
@@ -128,12 +128,12 @@ class Bitloops {
   public async subscribe<dataType>(namedEvent: string, callback: (data: dataType) => void): Promise<Unsubscribe> {
     if (this.eventMap.size === 0) localStorage.removeItem(LOCAL_STORAGE.SUBSCRIPTION_ID);
     this.eventMap.set(namedEvent, callback);
-    let subscriptionConnectionId = localStorage.getItem(LOCAL_STORAGE.SUBSCRIPTION_ID) ?? '';
-    // if ConId is = '' and SOMEONE ELSE has acquired the lock, is initializing the subscription
+    const subscriptionConnectionId = localStorage.getItem(LOCAL_STORAGE.SUBSCRIPTION_ID) ?? '';
     if (subscriptionConnectionId === '' && this.sseIsBeingInitialized) {
-      setTimeout(() => this.subscribe(namedEvent, callback), 100);
+      return new Promise((resolve) => {
+        setTimeout(() => resolve(this.subscribe(namedEvent, callback)), 100);
+      });
     }
-    // subscriptionConnectionId = localStorage.getItem(LOCAL_STORAGE.SUBSCRIPTION_ID) ?? '';
     if (subscriptionConnectionId === '' && this.sseIsBeingInitialized === false) {
       this.sseIsBeingInitialized = true;
     }
@@ -142,28 +142,16 @@ class Bitloops {
      * Becomes Critical section when subscriptionId = ''
      * and sse connection is being Initialized
      */
-    const subscribeUrl = `${this.httpSecure()}://${
-      this.config.server
-    }/bitloops/events/subscribe/${subscriptionConnectionId}`;
+    const [response, error] = await this.registerTopicORConnection(subscriptionConnectionId, namedEvent);
 
-    const headers = this.getAuthHeaders();
-
-    const [response, error] = await this.axiosHandler(
-      {
-        url: subscribeUrl,
-        method: 'POST',
-        headers,
-        data: { topics: [namedEvent], workspaceId: this.config.workspaceId },
-      },
-      Bitloops.axiosInstance
-    );
     if (error || response === null) {
       this.sseIsBeingInitialized = false;
       this.eventMap.delete(namedEvent);
       console.error(error);
       return () => null;
     }
-    if (!subscriptionConnectionId) {
+
+    if (this.sseIsBeingInitialized === true && subscriptionConnectionId === '') {
       localStorage.setItem(LOCAL_STORAGE.SUBSCRIPTION_ID, response.data);
       this.sseIsBeingInitialized = false;
       this.setupEventSource(true);
@@ -175,6 +163,7 @@ class Bitloops {
     const listenerCallback = (event: MessageEvent<any>) => {
       callback(JSON.parse(event.data));
     };
+    console.log('this.subscribeConnection', this.subscribeConnection);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
     return () => {
@@ -240,15 +229,45 @@ class Bitloops {
     return headers;
   }
 
+  /**
+   * Gets a new connection Id if called from the first subscriber
+   * In all cases it registers the topic to the Connection Id
+   * @param subscriptionConnectionId
+   * @param namedEvent
+   * @returns
+   */
+  private async registerTopicORConnection(subscriptionConnectionId: string, namedEvent: string) {
+    const subscribeUrl = `${this.httpSecure()}://${
+      this.config.server
+    }/bitloops/events/subscribe/${subscriptionConnectionId}`;
+
+    const headers = this.getAuthHeaders();
+    try {
+      const res = await Bitloops.axiosInstance({
+        url: subscribeUrl,
+        method: 'POST',
+        headers,
+        data: { topics: [namedEvent], workspaceId: this.config.workspaceId },
+      });
+      return [res, null];
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return [error.response ?? null, error];
+      }
+      return [null, error];
+    }
+  }
+
   private sseReconnect() {
     setTimeout(() => {
-      // console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
+      console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
       this.setupEventSource();
       this.reconnectFreqSecs = this.reconnectFreqSecs >= 60 ? 60 : this.reconnectFreqSecs * 2;
     }, this.reconnectFreqSecs * 1000);
   }
 
   private async resubscribe() {
+    console.log('resubscribing topics');
     this.eventMap.forEach((callback, namedEvent) => {
       this.subscribe(namedEvent, callback);
     });
@@ -270,6 +289,7 @@ class Bitloops {
     };
 
     this.subscribeConnection.onerror = (error: any) => {
+      console.log('subscribeConnection.onerror, closing and re-trying');
       this.subscribeConnection.close();
       if (
         error.status === 401 &&

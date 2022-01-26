@@ -68,6 +68,7 @@ export type BitloopsConfig = {
   ssl?: boolean;
   workspaceId: string;
   messagingSenderId: string;
+  applications?: string[];
   auth?: AuthenticationOptionsType;
 };
 

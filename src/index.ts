@@ -7,15 +7,13 @@ import {
   AxiosHandlerOutcome,
   BitloopsConfig,
   BitloopsUser,
-  IAuthenticationOptions,
   IBitloopsAuthenticationOptions,
   IFirebaseAuthenticationOptions,
   Unsubscribe,
   LOCAL_STORAGE,
 } from './definitions';
-import { wait as sleepAsync } from './helpers';
 
-export { AuthTypes };
+export { AuthTypes, BitloopsConfig, BitloopsUser };
 
 class Bitloops {
   config: BitloopsConfig;
@@ -172,44 +170,6 @@ class Bitloops {
       if (this.eventMap.size === 0) this.subscribeConnection.close();
     };
   }
-
-  // private getAuthHeaderValues(
-  //   authType: AuthTypes,
-  //   authOptions: AuthenticationOptionsType
-  // ): { token: string; providerId?: string } {
-  //   let token: string;
-  //   let providerId: string;
-  //   switch (authType) {
-  //     case AuthTypes.Basic:
-  //       throw Error('Unimplemented');
-  //     case AuthTypes.OAuth2:
-  //       throw Error('Unimplemented');
-  //     case AuthTypes.X_API_KEY:
-  //       token = (authOptions as IAPIAuthenticationOptions).token;
-  //       break;
-  //     case AuthTypes.Token:
-  //       throw Error('Unimplemented');
-  //     case AuthTypes.User:
-  //       providerId = (authOptions as any).providerId;
-  //       token = '';
-  //       break;
-  //     case AuthTypes.FirebaseUser:
-  //       token = (authOptions as IFirebaseAuthenticationOptions).user?.accessToken;
-  //       providerId = (authOptions as IFirebaseAuthenticationOptions).providerId;
-  //       return {
-  //         token,
-  //         providerId,
-  //       };
-  //     case AuthTypes.Anonymous:
-  //       token = '';
-  //       break;
-  //     default:
-  //       throw Error('Unimplemented');
-  //   }
-  //   return {
-  //     token,
-  //   };
-  // }
 
   private httpSecure(): 'http' | 'https' {
     return this.config.ssl === false ? 'http' : 'https';

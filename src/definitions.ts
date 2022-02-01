@@ -49,12 +49,20 @@ export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
   user: IFirebaseUser;
   refreshTokenFunction?: () => Promise<string | null>;
 }
+
 export interface IBitloopsAuthenticationOptions extends IAuthenticationOptions {
+  authenticationType: AuthTypes;
+  providerId: string;
+  clientId: string;
+}
+
+export interface IBitloopsAuthenticationLocalStorageOptions extends IAuthenticationOptions {
   authenticationType: AuthTypes;
   providerId: string;
   clientId: string;
   authChangeCallback: null | ((BitloopsUser) => void);
 }
+
 
 export type AuthenticationOptionsType =
   | IFirebaseAuthenticationOptions

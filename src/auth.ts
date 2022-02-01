@@ -1,9 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import {
   AuthTypes,
-  AuthenticationOptionsType,
-  BitloopsConfig,
-  IBitloopsAuthenticationOptions,
+  IBitloopsAuthenticationLocalStorageOptions,
   LOCAL_STORAGE,
 } from './definitions';
 import Bitloops from './index';
@@ -24,14 +22,14 @@ class auth {
     const sessionUuid = localStorage.getItem('sessionUuid');
     if (config?.auth?.authenticationType !== AuthTypes.User) throw new Error('Auth type must be User');
     const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server}/bitloops/auth/google?client_id=${
-      (config?.auth as IBitloopsAuthenticationOptions).clientId
-    }&provider_id=${(config?.auth as IBitloopsAuthenticationOptions).providerId}&workspace_id=${
+      (config?.auth as IBitloopsAuthenticationLocalStorageOptions).clientId
+    }&provider_id=${(config?.auth as IBitloopsAuthenticationLocalStorageOptions).providerId}&workspace_id=${
       config.workspaceId
     }&session_uuid=${sessionUuid}`;
     if (typeof window !== 'undefined') {
       window.open(url, '_blank');
       // Start a temporary subscription to receive information of the authentication being initiated on another tab
-      // const unsubscribe = auth.bitloops.subscribe(`workflow-events.auth:${(config?.auth as IBitloopsAuthenticationOptions).providerId}:${sessionUuid}`, async (user: BitloopsUser) => {
+      // const unsubscribe = auth.bitloops.subscribe(`workflow-events.auth:${(config?.auth as IBitloopsAuthenticationLocalStorageOptions).providerId}:${sessionUuid}`, async (user: BitloopsUser) => {
       //   // Store the callback function to use it in onAuthStateChange after the authentication process completes
       //   if (auth.authChangeCallback) auth.authChangeCallback(user);
       //   if (user) {
@@ -109,7 +107,7 @@ class auth {
        */
       // TODO remove async from subscribe
       const unsubscribe = auth.bitloops.subscribe(
-        `workflow-events.auth:${(config?.auth as IBitloopsAuthenticationOptions).providerId}:${sessionUuid}`,
+        `workflow-events.auth:${(config?.auth as IBitloopsAuthenticationLocalStorageOptions).providerId}:${sessionUuid}`,
         (user: BitloopsUser) => {
           console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage

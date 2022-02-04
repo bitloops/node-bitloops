@@ -79,8 +79,23 @@ export type BitloopsConfig = {
   auth?: AuthenticationOptionsType;
 };
 
-export type AxiosHandlerOutcome = [AxiosResponse, null] | [AxiosResponse | null, AxiosError] | [null, unknown];
-export type AxiosHandlerOutcome2 = [AxiosResponse, null] | [AxiosResponse | null, AxiosError] | [null, unknown];
+// export type AxiosHandlerOutcome = [AxiosResponse, null] | [AxiosResponse | null, AxiosError] | [null, unknown];
+export type AxiosHandlerOutcome = AxiosDataResponse | AxiosErrorResponse | AxiosUnexpectedResponse;
+
+type AxiosDataResponse = {
+  data: AxiosResponse;
+  error: null;
+};
+
+type AxiosErrorResponse = {
+  data: AxiosResponse | undefined;
+  error: AxiosError;
+};
+
+type AxiosUnexpectedResponse = {
+  data: null;
+  error: unknown;
+};
 
 export const enum LOCAL_STORAGE {
   USER_DATA = 'bitloops.auth.userData',

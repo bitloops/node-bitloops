@@ -14,6 +14,7 @@ import {
 } from './definitions';
 
 export { AuthTypes, BitloopsConfig, BitloopsUser };
+const DEFAULT_ERR_MSG = 'Server Error';
 
 class Bitloops {
   config: BitloopsConfig;
@@ -72,31 +73,41 @@ class Bitloops {
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
-    let response = await axios
-      .post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
-        headers,
-      })
-      .catch((error: any) => {
-        return error.response;
-      });
-    if (
-      response.status === 401 &&
-      this.authOptions !== undefined &&
-      this.authOptions.authenticationType === AuthTypes.FirebaseUser &&
-      this.authOptions.refreshTokenFunction
-    ) {
-      const firebaseAuthOptions = this.authOptions;
-      const newAccessToken = firebaseAuthOptions.refreshTokenFunction
-        ? await firebaseAuthOptions.refreshTokenFunction()
-        : null;
-      if (newAccessToken) {
-        this.authOptions['user'].accessToken = newAccessToken;
-        (headers['Authorization'] = `${this.authOptions.authenticationType} ${newAccessToken}`),
-          (response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
-            headers,
-          }));
-      }
+    const url = `${this.httpSecure()}://${this.config.server}/bitloops/request`;
+    const { data: response, error } = await this.axiosHandler(
+      { url, method: 'POST', data: body, headers },
+      Bitloops.axiosInstance
+    );
+    if (error) {
+      return response?.data;
     }
+    // let response = await axios
+    //   .post(, body, {
+    //     headers,
+    //   })
+    //   .catch((error: any) => {
+
+    //     return error.response;
+    //   });
+    // if (
+    //   response.status === 401 &&
+    //   this.authOptions !== undefined &&
+    //   this.authOptions.authenticationType === AuthTypes.FirebaseUser &&
+    //   this.authOptions.refreshTokenFunction
+    // ) {
+    //   const firebaseAuthOptions = this.authOptions;
+    //   const newAccessToken = firebaseAuthOptions.refreshTokenFunction
+    //     ? await firebaseAuthOptions.refreshTokenFunction()
+    //     : null;
+    //   if (newAccessToken) {
+    //     this.authOptions['user'].accessToken = newAccessToken;
+    //     (headers['Authorization'] = `${this.authOptions.authenticationType} ${newAccessToken}`),
+    //       (response = await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/request`, body, {
+    //         headers,
+    //       }));
+    //   }
+    //
+    if (!response) return new Error(DEFAULT_ERR_MSG);
     return response.data;
   }
 
@@ -287,12 +298,12 @@ class Bitloops {
   private async axiosHandler(config: AxiosRequestConfig, axiosInst: AxiosInstance): Promise<AxiosHandlerOutcome> {
     try {
       const res = await axiosInst(config);
-      return [res, null];
+      return { data: res, error: null };
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        return [error.response ?? null, error];
+        return { data: error.response, error };
       }
-      return [null, error];
+      return { data: null, error };
     }
   }
 
@@ -343,8 +354,9 @@ class Bitloops {
             providerId: (config?.auth as IBitloopsAuthenticationOptions).providerId,
           };
           // const response = await axios.post(url, body);
-          const [response, error] = await this.axiosHandler({ url, data: body }, axios);
-          if (error || response === null) {
+          // const [response, error = await this.axiosHandler({ url, data: body }, axios);
+          const { data: response, error } = await this.axiosHandler({ url, method: 'POST', data: body }, axios);
+          if (error) {
             console.log('Refresh token was invalid');
             // invalid refresh token
             // clean refresh_token

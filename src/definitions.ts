@@ -19,7 +19,7 @@ export type BitloopsUser = {
 /** Removes subscribe listener */
 export type Unsubscribe = () => void;
 
-export enum AuthTypes {
+export const enum AuthTypes {
   Anonymous = 'Anonymous',
   Basic = 'Basic',
   X_API_KEY = 'X-API-Key',
@@ -37,21 +37,21 @@ export interface IAuthenticationOptions {
   authenticationType: AuthTypes;
 }
 
-export interface IAPIAuthenticationOptions extends IAuthenticationOptions {
-  authenticationType: AuthTypes;
+export interface IAPIAuthenticationOptions {
+  authenticationType: AuthTypes.X_API_KEY;
   token: string;
   refreshTokenFunction?: never;
 }
 
-export interface IFirebaseAuthenticationOptions extends IAuthenticationOptions {
-  authenticationType: AuthTypes;
+export interface IFirebaseAuthenticationOptions {
+  authenticationType: AuthTypes.FirebaseUser;
   providerId: string;
   user: IFirebaseUser;
   refreshTokenFunction?: () => Promise<string | null>;
 }
 
-export interface IBitloopsAuthenticationOptions extends IAuthenticationOptions {
-  authenticationType: AuthTypes;
+export interface IBitloopsAuthenticationOptions {
+  authenticationType: AuthTypes.User;
   providerId: string;
   clientId: string;
 }
@@ -62,7 +62,6 @@ export interface IBitloopsAuthenticationLocalStorageOptions extends IAuthenticat
   clientId: string;
   authChangeCallback: null | ((BitloopsUser) => void);
 }
-
 
 export type AuthenticationOptionsType =
   | IFirebaseAuthenticationOptions

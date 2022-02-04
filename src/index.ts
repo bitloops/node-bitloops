@@ -83,9 +83,9 @@ class Bitloops {
       response.status === 401 &&
       this.authOptions !== undefined &&
       this.authOptions.authenticationType === AuthTypes.FirebaseUser &&
-      (this.authOptions as IFirebaseAuthenticationOptions).refreshTokenFunction
+      this.authOptions.refreshTokenFunction
     ) {
-      const firebaseAuthOptions = this.authOptions as IFirebaseAuthenticationOptions;
+      const firebaseAuthOptions = this.authOptions;
       const newAccessToken = firebaseAuthOptions.refreshTokenFunction
         ? await firebaseAuthOptions.refreshTokenFunction()
         : null;

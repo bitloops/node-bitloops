@@ -1,9 +1,9 @@
 //     "start:dev": "nodemon --config nodemon.json src/test.ts",
 
-import { AuthTypes } from './definitions';
+import { AuthTypes, BitloopsConfig } from './definitions';
 import Bitloops from './index';
 
-const bitloopsConfig = {
+const bitloopsConfig: BitloopsConfig = {
   apiKey: 'kgyst344ktst43kyygk4tkt4s',
   server: 'localhost:3005',
   environmentId: 'development',

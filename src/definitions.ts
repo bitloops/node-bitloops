@@ -19,7 +19,7 @@ export type BitloopsUser = {
 /** Removes subscribe listener */
 export type Unsubscribe = () => void;
 
-export const enum AuthTypes {
+export enum AuthTypes {
   Anonymous = 'Anonymous',
   Basic = 'Basic',
   X_API_KEY = 'X-API-Key',

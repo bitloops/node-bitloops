@@ -12,6 +12,7 @@ import {
   Unsubscribe,
   LOCAL_STORAGE,
 } from './definitions';
+import { isTokenExpired } from './helpers';
 
 export { AuthTypes, BitloopsConfig, BitloopsUser };
 const DEFAULT_ERR_MSG = 'Server Error';
@@ -318,10 +319,22 @@ class Bitloops {
         // Do something before request is sent
         const bitloopsConfig = Bitloops.getConfig();
         const user = auth.getUser();
+        console.log('request user before rest', user)
         if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User && user?.uid) {
-          const token = user?.accessToken;
+          const accessToken = user?.accessToken;
+          const refreshToken = user.refreshToken;
+          // TODO check if expired access,refresh
+          const isRefreshTokenExpired = isTokenExpired(refreshToken);
+          const isAccessTokenExpired = isTokenExpired(accessToken);
+
+          console.log('isRefreshTokenExpired', isRefreshTokenExpired);
+          console.log('isAccessTokenExpired', isRefreshTokenExpired);
+
+          if(isRefreshTokenExpired){
+            auth.clearAuthentication();
+          }
           if (!config.headers) config.headers = {};
-          config.headers['Authorization'] = `User ${token}`;
+          config.headers['Authorization'] = `User ${accessToken}`;
         }
         return config;
       },
@@ -346,6 +359,7 @@ class Bitloops {
           const config = Bitloops.getConfig();
           const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server}/bitloops/auth/refreshToken`;
           const user = auth.getUser();
+          console.log('auth user ', user);
           // todo skip step instead of throw
           if (!user?.refreshToken) throw new Error('no refresh token');
           const body = {

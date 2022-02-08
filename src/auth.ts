@@ -49,7 +49,7 @@ class auth {
 
   static async clearAuthentication() {
     // TODO communicate logout to REST
-    console.log('logout called');
+    console.log('node bitloops logout called');
     const user = auth.getUser();
     const config = Bitloops.getConfig();
     if (user && config) {

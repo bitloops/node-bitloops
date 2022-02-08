@@ -33,6 +33,7 @@
   "homepage": "https://bitloops.com",
   "dependencies": {
     "axios": "^0.25.0",
+    "crypto": "^1.0.1",
     "eventsource": "^1.1.0",
     "uuid": "^8.3.2"
   },

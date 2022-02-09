@@ -29,6 +29,7 @@ export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve,
 
 	const jwtData = JSON.parse(jsonPayload) as JWTData;
 	const { exp } = jwtData;
+	console.log('expires at: ', new Date(exp*1000));
 	const isExpired = Date.now() >= exp * 1000;
     return isExpired;
 };

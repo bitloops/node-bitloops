@@ -62,7 +62,6 @@ class auth {
         sessionUuid: localStorage.getItem(LOCAL_STORAGE.SESSION_UUID),
         workspaceId: config.workspaceId,
       };
-      // localStorage.removeItem('bitloops.auth.userData');
       const headers = {};
       await axios.post(
         `${config?.ssl ? 'https' : 'http'}://${config?.server}/bitloops/auth/clearAuthentication`,

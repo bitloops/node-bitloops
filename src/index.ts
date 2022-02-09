@@ -288,6 +288,7 @@ class Bitloops {
    */
   private interceptAxiosInstance(): AxiosInstance {
     const instance = axios.create();
+    const CancelToken = axios.CancelToken;
     // Request interceptor for API calls
     instance.interceptors.request.use(
       async (config) => {
@@ -307,7 +308,10 @@ class Bitloops {
           if(isRefreshTokenExpired){
             console.log('refresh expired, logging out')
             auth.clearAuthentication();
-            return config;
+            return {
+              ...config,
+              cancelToken: new CancelToken((cancel) => cancel('Cancel repeated request'))
+            }
           }else if(isAccessTokenExpired){
             console.log('access token expired');
             const newUser = await this.refreshToken();
@@ -338,7 +342,8 @@ class Bitloops {
           !originalRequest._retry
         ) {
           originalRequest._retry = true;
-          this.refreshToken();
+          console.log('before refreshh')
+          await this.refreshToken();
           return instance.request(originalRequest);
         }
       }

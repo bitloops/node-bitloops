@@ -1,3 +1,5 @@
 {
-  "cSpell.words": ["eventsource"]
+  "cSpell.words": ["eventsource"],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true
 }

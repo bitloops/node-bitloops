@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import { JWTData } from "./definitions";
 
 export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,11 +9,8 @@ export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve,
  * @returns boolean, indication of whether the token is expired
  * or not
  */
- export const isTokenExpired = (token: string): boolean => {
-	const verifyFunction = crypto.createVerify('RSA-SHA256');
-	const [jwtHeaders,jwtPayload] = token.split('.');
-	verifyFunction.write(jwtHeaders + '.' + jwtPayload);
-	verifyFunction.end();
+export const isTokenExpired = (token: string): boolean => {
+	const [jwtPayload] = token.split('.');
 
 	const base64Payload = jwtPayload.replace(/-/g, '+').replace(/_/g, '/');
 	const jsonPayload = decodeURIComponent(
@@ -29,7 +25,7 @@ export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve,
 
 	const jwtData = JSON.parse(jsonPayload) as JWTData;
 	const { exp } = jwtData;
-	console.log('expires at: ', new Date(exp*1000));
+	console.log('expires at: ', new Date(exp * 1000));
 	const isExpired = Date.now() >= exp * 1000;
-    return isExpired;
+	return isExpired;
 };

@@ -11,15 +11,16 @@ class Auth {
 
   private static storage: IInternalStorage;
 
-  static setBitloops(bitloops: Bitloops) {
+  static async setBitloops(bitloops: Bitloops) {
     Auth.bitloops = bitloops;
     Auth.storage = InternalStorageFactory.getInstance();
-    if (!Auth.storage.getSessionUuid()) Auth.storage.saveSessionUuid(uuid());
+    const currentSession = await Auth.storage.getSessionUuid();
+    if (!currentSession) await Auth.storage.saveSessionUuid(uuid());
   }
 
-  static authenticateWithGoogle() {
+  static async authenticateWithGoogle() {
     const config = Auth.bitloops.getConfig();
-    const sessionUuid = Auth.storage.getSessionUuid();
+    const sessionUuid = await Auth.storage.getSessionUuid();
     if (config?.auth?.authenticationType !== AuthTypes.User) {
       throw new Error('Auth type must be User');
     }
@@ -36,16 +37,17 @@ class Auth {
   static async clearAuthentication() {
     // TODO communicate logout to REST
     console.log('node bitloops logout called');
-    const user = Auth.getUser();
+    const user = await Auth.getUser();
     const config = Auth.bitloops.getConfig();
     if (user && config) {
       const { accessToken, clientId, providerId, refreshToken } = user;
+      const sessionUuid = await Auth.storage.getSessionUuid();
       const body = {
         accessToken,
         clientId,
         providerId,
         refreshToken,
-        sessionUuid: Auth.storage.getSessionUuid(),
+        sessionUuid,
         workspaceId: config.workspaceId,
       };
       const headers = {};
@@ -56,26 +58,26 @@ class Auth {
           headers,
         },
       );
-      Auth.storage.deleteUser();
+      await Auth.storage.deleteUser();
     }
   }
 
   // registerWithGoogle() {} // TODO implement registration vs authentication
 
   // Returns the user information stored in localStorage
-  static getUser(): BitloopsUser | null {
+  static async getUser(): Promise<BitloopsUser | null> {
     return Auth.storage.getUser();
   }
 
-  static onAuthStateChange(authChangeCallback: (user: BitloopsUser | null) => void) {
+  static async onAuthStateChange(authChangeCallback: (user: BitloopsUser | null) => void) {
     // 1. User is unauthorized and subscribes to onAuthStateChange => we use the sessionUuid
     // 2. User is authorized and subscribed to onAuthStateChange => we use the sessionUuid
 
-    const user = Auth.getUser();
+    const user = await Auth.getUser();
     const config = Auth.bitloops.getConfig();
     // Checking if the correct auth type is being used else you cannot use onAuthStateChange
     if (config && config.auth?.authenticationType === AuthTypes.User) {
-      const sessionUuid = Auth.storage.getSessionUuid();
+      const sessionUuid = await Auth.storage.getSessionUuid();
       /**
        * First trigger when code runs
        */
@@ -87,14 +89,14 @@ class Auth {
       // TODO remove async from subscribe
       const unsubscribe = Auth.bitloops.subscribe(
         `workflow-events.auth:${config?.auth.providerId}:${sessionUuid}`,
-        (receivedUser: BitloopsUser) => {
+        async (receivedUser: BitloopsUser) => {
           console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage
           if (receivedUser && JSON.stringify(receivedUser) !== '{}') {
-            Auth.storage.saveUser(receivedUser);
+            await Auth.storage.saveUser(receivedUser);
             authChangeCallback(receivedUser);
           } else {
-            Auth.storage.deleteUser();
+            await Auth.storage.deleteUser();
             authChangeCallback(null);
           }
         },

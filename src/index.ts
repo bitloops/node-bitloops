@@ -56,7 +56,6 @@ class Bitloops {
   }
 
   private set sseIsBeingInitialized(flagValue: boolean) {
-    console.log('changing _sseIsBeingInitialized value to', flagValue);
     this._sseIsBeingInitialized = flagValue;
   }
 
@@ -92,7 +91,7 @@ class Bitloops {
     // 4. User is logged-in and has invalid access key but valid refresh key    => Refresh key is used to issue new access token and new refresh key
     // 5. User is logged-in and has invalid access key and invalid refresh key  => User's onAuthChange listener is triggered with logout
     /* eslint-enable max-len */
-    const headers = this.getAuthHeaders();
+    const headers = await this.getAuthHeaders();
     headers['workspace-id'] = this.config.workspaceId;
     headers['environment-id'] = this.config.environmentId;
     headers['workflow-id'] = workflowId;
@@ -120,7 +119,7 @@ class Bitloops {
   }
 
   public async publish(messageId: string, options?: any): Promise<any> {
-    const headers = this.getAuthHeaders();
+    const headers = await this.getAuthHeaders();
     headers['workspace-id'] = this.config.workspaceId;
     headers['environment-id'] = this.config.environmentId;
     headers['message-id'] = messageId;
@@ -173,7 +172,7 @@ class Bitloops {
     if (this.sseIsBeingInitialized === true && this.subscriptionId === '') {
       this.subscriptionId = response.data;
       this.sseIsBeingInitialized = false;
-      this.setupEventSource(true);
+      await this.setupEventSource(true);
     }
     /**
      * End of critical section
@@ -196,16 +195,17 @@ class Bitloops {
     return this.config.ssl === false ? 'http' : 'https';
   }
 
-  private getAuthHeaders() {
+  private async getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Unauthorized ' };
     const { config } = this;
-    const user = Auth.getUser();
+    const user = await Auth.getUser();
     if (config?.auth?.authenticationType === AuthTypes.User && user?.uid) {
       const bitloopsUserAuthOptions = config?.auth as IBitloopsAuthenticationOptions;
+      const sessionUuid = await this.storage.getSessionUuid();
       headers['provider-id'] = bitloopsUserAuthOptions.providerId;
       headers['client-id'] = bitloopsUserAuthOptions.clientId;
       headers.Authorization = `User ${user.accessToken}`;
-      headers['session-uuid'] = this.storage.getSessionUuid();
+      headers['session-uuid'] = sessionUuid;
     }
     return headers;
   }
@@ -222,7 +222,7 @@ class Bitloops {
       this.config.server
     }/bitloops/events/subscribe/${subscriptionConnectionId}`;
 
-    const headers = this.getAuthHeaders();
+    const headers = await this.getAuthHeaders();
     try {
       const res = await Bitloops.axiosInstance({
         url: subscribeUrl,
@@ -240,9 +240,9 @@ class Bitloops {
   }
 
   private sseReconnect() {
-    setTimeout(() => {
+    setTimeout(async () => {
       console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
-      this.setupEventSource();
+      await this.setupEventSource();
       this.reconnectFreqSecs = this.reconnectFreqSecs >= 60 ? 60 : this.reconnectFreqSecs * 2;
     }, this.reconnectFreqSecs * 1000);
   }
@@ -254,13 +254,13 @@ class Bitloops {
     });
   }
 
-  private setupEventSource(initialRun = false) {
+  private async setupEventSource(initialRun = false) {
     const subscriptionConnectionId = this.subscriptionId;
     const url = `${this.httpSecure()}://${
       this.config.server
     }/bitloops/events/${subscriptionConnectionId}`;
 
-    const headers = this.getAuthHeaders();
+    const headers = await this.getAuthHeaders();
     const eventSourceInitDict = { headers };
 
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
@@ -305,7 +305,7 @@ class Bitloops {
       async (config) => {
         // Do something before request is sent
         const bitloopsConfig = this.config;
-        const user = Auth.getUser();
+        const user = await Auth.getUser();
         if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User && user?.uid) {
           const { accessToken, refreshToken } = user;
           // TODO check if expired access,refresh
@@ -369,7 +369,7 @@ class Bitloops {
     const url = `${config?.ssl === false ? 'http' : 'https'}://${
       config?.server
     }/bitloops/auth/refreshToken`;
-    const user = Auth.getUser();
+    const user = await Auth.getUser();
     if (!user?.refreshToken) throw new Error('no refresh token');
     const body = {
       refreshToken: user.refreshToken,
@@ -396,7 +396,7 @@ class Bitloops {
       refreshToken: newRefreshToken,
     };
     console.log('Updated refresh token');
-    this.storage.saveUser(newUser);
+    await this.storage.saveUser(newUser);
     return newUser;
   }
 }

@@ -1,4 +1,4 @@
-import { BitloopsUser, IInternalStorage, LOCAL_STORAGE } from '../definitions';
+import { BitloopsUser, IInternalStorage, StorageKeys } from '../definitions';
 
 export default class LocalStorage implements IInternalStorage {
   //   saveBitloopsConfig(bitloopsConfig: BitloopsConfig) {
@@ -20,28 +20,28 @@ export default class LocalStorage implements IInternalStorage {
   //     localStorage.removeItem(LOCAL_STORAGE.SUBSCRIPTION_ID);
   //   }
 
-  saveSessionUuid(sessionId: string) {
-    localStorage.setItem(LOCAL_STORAGE.SESSION_UUID, sessionId);
+  async saveSessionUuid(sessionId: string): Promise<void> {
+    localStorage.setItem(StorageKeys.SESSION_UUID, sessionId);
   }
 
-  getSessionUuid() {
-    return localStorage.getItem(LOCAL_STORAGE.SESSION_UUID);
+  async getSessionUuid(): Promise<string | null> {
+    return localStorage.getItem(StorageKeys.SESSION_UUID);
   }
 
-  deleteSessionUuid(): void {
-    localStorage.removeItem(LOCAL_STORAGE.SESSION_UUID);
+  async deleteSessionUuid(): Promise<void> {
+    localStorage.removeItem(StorageKeys.SESSION_UUID);
   }
 
-  saveUser(bitloopsUser: BitloopsUser): void {
-    localStorage.setItem(LOCAL_STORAGE.USER_DATA, JSON.stringify(bitloopsUser));
+  async saveUser(bitloopsUser: BitloopsUser): Promise<void> {
+    localStorage.setItem(StorageKeys.USER_DATA, JSON.stringify(bitloopsUser));
   }
 
-  getUser(): BitloopsUser {
-    const userString = localStorage.getItem(LOCAL_STORAGE.USER_DATA);
+  async getUser(): Promise<BitloopsUser | null> {
+    const userString = localStorage.getItem(StorageKeys.USER_DATA);
     return userString ? JSON.parse(userString) : null;
   }
 
-  deleteUser(): void {
-    localStorage.removeItem(LOCAL_STORAGE.USER_DATA);
+  async deleteUser(): Promise<void> {
+    localStorage.removeItem(StorageKeys.USER_DATA);
   }
 }

@@ -97,7 +97,7 @@ type AxiosUnexpectedResponse = {
   error: unknown;
 };
 
-export const enum LOCAL_STORAGE {
+export const enum StorageKeys {
   USER_DATA = 'bitloops.auth.userData',
   BITLOOPS_CONFIG = 'bitloops.config',
   SUBSCRIPTION_ID = 'bitloops.subscriptionConnectionId',
@@ -141,11 +141,11 @@ export interface IInternalStorage {
   // getSubscriptionId: () => string | null;
   // deleteSubscriptionId: () => void;
 
-  saveSessionUuid: (sessionId: string) => void;
-  getSessionUuid: () => string | null;
-  deleteSessionUuid: () => void;
+  saveSessionUuid: (sessionId: string) => Promise<void>;
+  getSessionUuid: () => Promise<string | null>;
+  deleteSessionUuid: () => Promise<void>;
 
-  saveUser: (bitloopsUser: BitloopsUser) => void;
-  getUser: () => BitloopsUser | null;
-  deleteUser: () => void;
+  saveUser: (bitloopsUser: BitloopsUser) => Promise<void>;
+  getUser: () => Promise<BitloopsUser | null>;
+  deleteUser: () => Promise<void>;
 }

@@ -1,11 +1,11 @@
 import { isBrowser } from '../helpers';
-import GlobalObject from './GlobalObject';
+import CredentialsStorage from './CredentialsStorage';
 import { IInternalStorage } from '../definitions';
 import LocalStorage from './LocalStorage';
 
 export default class InternalStorageFactory {
   static getInstance(): IInternalStorage {
     if (isBrowser()) return new LocalStorage();
-    return new GlobalObject();
+    return new CredentialsStorage();
   }
 }

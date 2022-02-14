@@ -1,7 +1,7 @@
-import { BitloopsConfig, BitloopsUser, IInternalStorage, LOCAL_STORAGE } from './../definitions';
+import { BitloopsUser, IInternalStorage, LOCAL_STORAGE } from '../definitions';
 
 // TODO decide if globalObject is the best choice
-export class GlobalObject implements IInternalStorage {
+class GlobalObject implements IInternalStorage {
   //   saveBitloopsConfig(bitloopsConfig: BitloopsConfig) {
   //     global[LOCAL_STORAGE.BITLOOPS_CONFIG] = bitloopsConfig;
   //   }
@@ -23,9 +23,11 @@ export class GlobalObject implements IInternalStorage {
   saveSessionUuid(sessionId: string) {
     global[LOCAL_STORAGE.SESSION_UUID] = sessionId;
   }
+
   getSessionUuid() {
     return global[LOCAL_STORAGE.SESSION_UUID];
   }
+
   deleteSessionUuid(): void {
     delete global[LOCAL_STORAGE.SESSION_UUID];
   }
@@ -33,10 +35,14 @@ export class GlobalObject implements IInternalStorage {
   saveUser(bitloopsUser: BitloopsUser): void {
     global[LOCAL_STORAGE.USER_DATA] = bitloopsUser;
   }
+
   getUser(): BitloopsUser {
     return global[LOCAL_STORAGE.USER_DATA];
   }
+
   deleteUser(): void {
     delete global[LOCAL_STORAGE.USER_DATA];
   }
 }
+
+export default GlobalObject;

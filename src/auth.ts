@@ -1,13 +1,14 @@
 import { v4 as uuid } from 'uuid';
-import { AuthTypes, LOCAL_STORAGE, IInternalStorage } from './definitions';
-import Bitloops from './index';
-import { BitloopsUser } from './definitions';
 import axios from 'axios';
+import { AuthTypes, IInternalStorage, BitloopsUser } from './definitions';
+// eslint-disable-next-line import/no-cycle
+import Bitloops from './index';
 import { isBrowser as envIsBrowser } from './helpers';
-import { InternalStorageFactory } from './InternalStorage/InternalStorageFactory';
+import InternalStorageFactory from './InternalStorage/InternalStorageFactory';
 
 class Auth {
   private static bitloops: Bitloops;
+
   private static storage: IInternalStorage;
 
   static setBitloops(bitloops: Bitloops) {
@@ -19,10 +20,14 @@ class Auth {
   static authenticateWithGoogle() {
     const config = Auth.bitloops.getConfig();
     const sessionUuid = Auth.storage.getSessionUuid();
-    if (config?.auth?.authenticationType !== AuthTypes.User) throw new Error('Auth type must be User');
-    const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server}/bitloops/auth/google?client_id=${
-      config?.auth.clientId
-    }&provider_id=${config?.auth.providerId}&workspace_id=${config.workspaceId}&session_uuid=${sessionUuid}`;
+    if (config?.auth?.authenticationType !== AuthTypes.User) {
+      throw new Error('Auth type must be User');
+    }
+    const url = `${config?.ssl === false ? 'http' : 'https'}://${
+      config?.server
+    }/bitloops/auth/google?client_id=${config?.auth.clientId}&provider_id=${
+      config?.auth.providerId
+    }&workspace_id=${config.workspaceId}&session_uuid=${sessionUuid}`;
     if (envIsBrowser()) {
       window.open(url, '_blank');
     }
@@ -35,7 +40,7 @@ class Auth {
     const config = Auth.bitloops.getConfig();
     if (user && config) {
       const { accessToken, clientId, providerId, refreshToken } = user;
-      let body = {
+      const body = {
         accessToken,
         clientId,
         providerId,
@@ -82,12 +87,12 @@ class Auth {
       // TODO remove async from subscribe
       const unsubscribe = Auth.bitloops.subscribe(
         `workflow-events.auth:${config?.auth.providerId}:${sessionUuid}`,
-        (user: BitloopsUser) => {
+        (receivedUser: BitloopsUser) => {
           console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage
-          if (user && JSON.stringify(user) !== '{}') {
-            Auth.storage.saveUser(user);
-            authChangeCallback(user);
+          if (receivedUser && JSON.stringify(receivedUser) !== '{}') {
+            Auth.storage.saveUser(receivedUser);
+            authChangeCallback(receivedUser);
           } else {
             Auth.storage.deleteUser();
             authChangeCallback(null);
@@ -95,9 +100,8 @@ class Auth {
         },
       );
       return unsubscribe;
-    } else {
-      throw new Error('Auth type must be User');
     }
+    throw new Error('Auth type must be User');
   }
 }
 

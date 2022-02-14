@@ -1,6 +1,9 @@
 import { JWTData } from './definitions';
 
-export const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const wait = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 export const isBrowser = () => typeof window !== 'undefined';
 
@@ -12,22 +15,20 @@ export const isBrowser = () => typeof window !== 'undefined';
  * or not
  */
 export const isTokenExpired = (token: string): boolean => {
-  const [jwtPayload] = token.split('.');
+  const jwtPayload = token.split('.')[1];
 
   const base64Payload = jwtPayload.replace(/-/g, '+').replace(/_/g, '/');
   const jsonPayload = decodeURIComponent(
     Buffer.from(base64Payload, 'base64')
       .toString()
       .split('')
-      .map((c) => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      })
-      .join('')
+      .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
+      .join(''),
   );
 
   const jwtData = JSON.parse(jsonPayload) as JWTData;
   const { exp } = jwtData;
-  console.log('expires at: ', new Date(exp * 1000));
+  // console.log('expires at: ', new Date(exp * 1000));
   const isExpired = Date.now() >= exp * 1000;
   return isExpired;
 };

@@ -37,7 +37,7 @@ class Bitloops {
 
   private reconnectFreqSecs: number = 1;
 
-  private eventMap = new Map();
+  private readonly eventMap = new Map();
 
   private static axiosInstance: AxiosInstance;
 
@@ -131,9 +131,13 @@ class Bitloops {
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
-    await axios.post(`${this.httpSecure()}://${this.config.server}/bitloops/publish`, body, {
-      headers,
-    });
+    await Bitloops.axiosInstance.post(
+      `${this.httpSecure()}://${this.config.server}/bitloops/publish`,
+      body,
+      {
+        headers,
+      },
+    );
     return true;
   }
 

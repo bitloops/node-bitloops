@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import EventSource from 'eventsource';
+import EventSource from 'eventsource-ts';
 // eslint-disable-next-line import/no-cycle
 import Auth from './auth';
 import {

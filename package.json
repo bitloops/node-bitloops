@@ -32,8 +32,8 @@
   },
   "homepage": "https://bitloops.com",
   "dependencies": {
-    "axios": "^0.25.0",
-    "eventsource-ts": "^0.0.4",
+    "axios": "^0.26.0",
+    "eventsource-ts": "^0.0.5",
     "keytar": "^7.8.0",
     "uuid": "^8.3.2"
   },

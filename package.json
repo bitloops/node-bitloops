@@ -1,6 +1,6 @@
 {
   "name": "bitloops",
-  "version": "0.0.33",
+  "version": "0.0.34",
   "description": "NodeJS library for the Bitloops",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,7 +33,7 @@
   "homepage": "https://bitloops.com",
   "dependencies": {
     "axios": "^0.26.0",
-    "eventsource-ts": "^0.0.8",
+    "eventsource-ts": "^0.0.9",
     "keytar": "^7.8.0",
     "uuid": "^8.3.2"
   },

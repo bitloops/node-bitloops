@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import EventSource from 'eventsource-ts';
 // eslint-disable-next-line import/no-cycle
-import Auth from './auth';
+import AuthFactory from './auth/AuthFactory';
+import { IAuthService } from './auth/types';
 import {
   AuthenticationOptionsType,
   AuthTypes,
@@ -27,7 +28,7 @@ class Bitloops {
 
   authOptions: AuthenticationOptionsType | undefined;
 
-  auth = Auth;
+  auth: IAuthService;
 
   private subscribeConnection: EventSource;
 
@@ -44,10 +45,10 @@ class Bitloops {
   private storage: IInternalStorage;
 
   private constructor(config: BitloopsConfig, storage: IInternalStorage) {
-    this.authOptions = config.auth;
     this.config = config;
     this.storage = storage;
-    this.auth.setBitloops(this);
+    // this.auth.setBitloops(this);
+    this.initializeAuth(storage);
     Bitloops.axiosInstance = this.interceptAxiosInstance();
   }
 
@@ -71,12 +72,8 @@ class Bitloops {
     return Bitloops.instance;
   }
 
-  public authenticate(options: AuthenticationOptionsType): void {
-    this.authOptions = options;
-  }
-
-  public signOut(): void {
-    this.authOptions = undefined;
+  private initializeAuth(storage: IInternalStorage) {
+    this.auth = AuthFactory.getInstance(this, storage);
   }
 
   public async r(workflowId: string, nodeId: string, options?: any): Promise<any> {
@@ -202,7 +199,7 @@ class Bitloops {
   private async getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Unauthorized ' };
     const { config } = this;
-    const user = await Auth.getUser();
+    const user = await this.auth.getUser();
     if (config?.auth?.authenticationType === AuthTypes.User && user?.uid) {
       const bitloopsUserAuthOptions = config?.auth as IBitloopsAuthenticationOptions;
       const sessionUuid = await this.storage.getSessionUuid();
@@ -271,7 +268,7 @@ class Bitloops {
     if (!initialRun) this.resubscribe();
 
     this.subscribeConnection.onopen = () => {
-      // console.log('Resetting retry timer...')
+      console.log('Resetting retry timer...');
       this.reconnectFreqSecs = 1;
     };
 
@@ -309,7 +306,7 @@ class Bitloops {
       async (config) => {
         // Do something before request is sent
         const bitloopsConfig = this.config;
-        const user = await Auth.getUser();
+        const user = await this.auth.getUser();
         if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User && user?.uid) {
           const { accessToken, refreshToken } = user;
           // TODO check if expired access,refresh
@@ -321,7 +318,7 @@ class Bitloops {
 
           if (isRefreshTokenExpired) {
             console.log('refresh expired, logging out');
-            Auth.clearAuthentication();
+            this.auth.clearAuthentication();
             return {
               ...config,
               cancelToken: new CancelToken((cancel) => cancel('Cancel repeated request')),
@@ -373,7 +370,7 @@ class Bitloops {
     const url = `${config?.ssl === false ? 'http' : 'https'}://${
       config?.server
     }/bitloops/auth/refreshToken`;
-    const user = await Auth.getUser();
+    const user = await this.auth.getUser();
     if (!user?.refreshToken) throw new Error('no refresh token');
     const body = {
       refreshToken: user.refreshToken,
@@ -389,7 +386,7 @@ class Bitloops {
       // invalid refresh token
       // clean refresh_token
       // logout user
-      Auth.clearAuthentication();
+      this.auth.clearAuthentication();
       return Promise.reject(error);
     }
     const newAccessToken = response?.data?.accessToken;

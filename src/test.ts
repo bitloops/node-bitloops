@@ -28,15 +28,14 @@ const test = async () => {
   const bitloops = Bitloops.initialize(bitloopsConfig);
 
   console.log('ALL OK');
-  bitloops.authenticate({
-    authenticationType: AuthTypes.X_API_KEY,
-    token: 'xrPA9_%Hx-#R@+$6px2+WVj-Ndw^a4W2',
-  });
 
   try {
     const workspacesP = await bitloops.p('workspaces.find');
     console.log(workspacesP);
-    const workspaces = await bitloops.r('00cdd9c6-c6e9-40f2-b0c0-8903e33ef279', '8214cbd7-4741-46a4-bb28-ae7ad0f33cc4');
+    const workspaces = await bitloops.r(
+      '00cdd9c6-c6e9-40f2-b0c0-8903e33ef279',
+      '8214cbd7-4741-46a4-bb28-ae7ad0f33cc4',
+    );
     console.log(workspaces);
 
     await bitloops.subscribe('workflow-events.update', (data) => {

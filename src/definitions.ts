@@ -17,7 +17,13 @@ export type BitloopsUser = {
 };
 
 /** Removes subscribe listener */
-export type Unsubscribe = () => void;
+export type Unsubscribe = (params: UnsubscribeParams) => void;
+
+export type UnsubscribeParams = {
+  subscriptionConnectionId: string;
+  namedEvent: string;
+  listenerCallback: (event: MessageEvent<any>) => void;
+}
 
 export enum AuthTypes {
   Anonymous = 'Anonymous',

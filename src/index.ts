@@ -12,6 +12,7 @@ import {
   IBitloopsAuthenticationOptions,
   Unsubscribe,
   IInternalStorage,
+  UnsubscribeParams,
 } from './definitions';
 import { isTokenExpired } from './helpers';
 import InternalStorageFactory from './InternalStorage/InternalStorageFactory';
@@ -185,11 +186,7 @@ class Bitloops {
     // console.log('this.subscribeConnection', this.subscribeConnection);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
-    return () => {
-      this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
-      this.eventMap.delete(namedEvent);
-      if (this.eventMap.size === 0) this.subscribeConnection.close();
-    };
+    return this.unsubscribe;
   }
 
   private httpSecure(): 'http' | 'https' {
@@ -212,6 +209,34 @@ class Bitloops {
   }
 
   /**
+   * Removes event listener from subscription.
+   * Deletes events from mapping that had been subscribed.
+   * Handles remaining dead subscription connections, in order to not send events.
+   * @param subscriptionConnectionId
+   * @param namedEvent
+   * @param listenerCallback
+   * @returns void
+   */
+  private async unsubscribe({ subscriptionConnectionId, namedEvent, listenerCallback }: UnsubscribeParams): Promise<void> {
+    this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
+
+    this.eventMap.delete(namedEvent);
+    if (this.eventMap.size === 0) this.subscribeConnection.close();
+
+    const unsubscribeUrl = `${this.httpSecure()}://${this.config.server
+      }/bitloops/events/unsubscribe/${subscriptionConnectionId}`;
+
+    const headers = await this.getAuthHeaders();
+
+    await Bitloops.axiosInstance({
+      url: unsubscribeUrl,
+      method: 'POST',
+      headers,
+      data: { workspaceId: this.config.workspaceId },
+    });
+  }
+
+  /**
    * Gets a new connection Id if called from the first subscriber
    * In all cases it registers the topic to the Connection Id
    * @param subscriptionConnectionId
@@ -219,9 +244,8 @@ class Bitloops {
    * @returns
    */
   private async registerTopicORConnection(subscriptionConnectionId: string, namedEvent: string) {
-    const subscribeUrl = `${this.httpSecure()}://${
-      this.config.server
-    }/bitloops/events/subscribe/${subscriptionConnectionId}`;
+    const subscribeUrl = `${this.httpSecure()}://${this.config.server
+      }/bitloops/events/subscribe/${subscriptionConnectionId}`;
 
     const headers = await this.getAuthHeaders();
     try {
@@ -257,9 +281,8 @@ class Bitloops {
 
   private async setupEventSource(initialRun = false) {
     const subscriptionConnectionId = this.subscriptionId;
-    const url = `${this.httpSecure()}://${
-      this.config.server
-    }/bitloops/events/${subscriptionConnectionId}`;
+    const url = `${this.httpSecure()}://${this.config.server
+      }/bitloops/events/${subscriptionConnectionId}`;
 
     const headers = await this.getAuthHeaders();
     const eventSourceInitDict = { headers };
@@ -367,9 +390,8 @@ class Bitloops {
 
   private async refreshToken(): Promise<BitloopsUser> {
     const { config } = this;
-    const url = `${config?.ssl === false ? 'http' : 'https'}://${
-      config?.server
-    }/bitloops/auth/refreshToken`;
+    const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server
+      }/bitloops/auth/refreshToken`;
     const user = await this.auth.getUser();
     if (!user?.refreshToken) throw new Error('no refresh token');
     const body = {

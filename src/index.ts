@@ -291,7 +291,6 @@ class Bitloops {
     if (!initialRun) this.resubscribe();
 
     this.subscribeConnection.onopen = () => {
-      console.log('Resetting retry timer...');
       this.reconnectFreqSecs = 1;
     };
 

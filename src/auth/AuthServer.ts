@@ -1,4 +1,5 @@
 import open from 'open';
+import axios from 'axios';
 import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig } from '../definitions';
 // eslint-disable-next-line import/no-cycle
 import Bitloops from '../index';
@@ -42,7 +43,30 @@ class AuthServer implements IAuthService {
   }
 
   async clearAuthentication() {
-    throw new Error('Unimplemented');
+    const config = this.bitloops.getConfig();
+    if (config.auth?.authenticationType !== AuthTypes.User) {
+      throw new Error('AuthType must be User');
+    }
+    const user = await this.getUser();
+    if (user === null) throw new Error('Not currently logged in');
+    if (user && config) {
+      const { accessToken, refreshToken } = user;
+      const body = {
+        accessToken,
+        clientId: config.auth.clientId,
+        providerId: config.auth.providerId,
+        refreshToken,
+      };
+      const headers = {};
+      await axios.post(
+        `${config?.ssl ? 'https' : 'http'}://${config?.server}/bitloops/auth/clearAuthentication`,
+        body,
+        {
+          headers,
+        },
+      );
+      await this.storage.deleteUser();
+    }
   }
 
   // registerWithGoogle() {} // TODO implement registration vs authentication

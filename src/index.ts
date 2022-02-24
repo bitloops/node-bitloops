@@ -167,7 +167,7 @@ class Bitloops {
       console.error(error);
       this.sseIsBeingInitialized = false;
       this.eventMap.delete(namedEvent);
-      return () => null;
+      throw new Error(`Unsubscribe error:  ${JSON.stringify(error)}`);
     }
 
     /** If you are the initiator, establish sse connection */
@@ -186,7 +186,7 @@ class Bitloops {
     // console.log('this.subscribeConnection', this.subscribeConnection);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
-    return this.unsubscribe;
+    return this.unsubscribe({ namedEvent, subscriptionId: this.subscriptionId, listenerCallback });
   }
 
   private httpSecure(): 'http' | 'https' {
@@ -212,40 +212,43 @@ class Bitloops {
    * Removes event listener from subscription.
    * Deletes events from mapping that had been subscribed.
    * Handles remaining dead subscription connections, in order to not send events.
-   * @param subscriptionConnectionId
+   * @param subscriptionId
    * @param namedEvent
    * @param listenerCallback
    * @returns void
    */
-  private async unsubscribe({ subscriptionConnectionId, namedEvent, listenerCallback }: UnsubscribeParams): Promise<void> {
-    this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
+  private unsubscribe({ subscriptionId, namedEvent, listenerCallback }: UnsubscribeParams) {
+    return async (): Promise<void> => {
+      this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
 
-    this.eventMap.delete(namedEvent);
-    if (this.eventMap.size === 0) this.subscribeConnection.close();
+      this.eventMap.delete(namedEvent);
+      if (this.eventMap.size === 0) this.subscribeConnection.close();
 
-    const unsubscribeUrl = `${this.httpSecure()}://${this.config.server
-      }/bitloops/events/unsubscribe/${subscriptionConnectionId}`;
+      const unsubscribeUrl = `${this.httpSecure()}://${this.config.server
+        } /bitloops/events / unsubscribe / ${subscriptionId} `;
 
-    const headers = await this.getAuthHeaders();
+      const headers = await this.getAuthHeaders();
 
-    await Bitloops.axiosInstance({
-      url: unsubscribeUrl,
-      method: 'POST',
-      headers,
-      data: { workspaceId: this.config.workspaceId },
-    });
+      await Bitloops.axiosInstance({
+        url: unsubscribeUrl,
+        method: 'POST',
+        headers,
+        data: { workspaceId: this.config.workspaceId },
+      });
+    }
+
   }
 
   /**
    * Gets a new connection Id if called from the first subscriber
    * In all cases it registers the topic to the Connection Id
-   * @param subscriptionConnectionId
+   * @param subscriptionId
    * @param namedEvent
    * @returns
    */
-  private async registerTopicORConnection(subscriptionConnectionId: string, namedEvent: string) {
+  private async registerTopicORConnection(subscriptionId: string, namedEvent: string) {
     const subscribeUrl = `${this.httpSecure()}://${this.config.server
-      }/bitloops/events/subscribe/${subscriptionConnectionId}`;
+      }/bitloops/events / subscribe / ${subscriptionId} `;
 
     const headers = await this.getAuthHeaders();
     try {
@@ -280,9 +283,9 @@ class Bitloops {
   }
 
   private async setupEventSource(initialRun = false) {
-    const subscriptionConnectionId = this.subscriptionId;
+    const { subscriptionId } = this;
     const url = `${this.httpSecure()}://${this.config.server
-      }/bitloops/events/${subscriptionConnectionId}`;
+      }/bitloops/events / ${subscriptionId} `;
 
     const headers = await this.getAuthHeaders();
     const eventSourceInitDict = { headers };
@@ -350,11 +353,11 @@ class Bitloops {
             console.log('access token expired');
             const newUser = await this.refreshToken();
             if (!config.headers) config.headers = {};
-            config.headers.Authorization = `User ${newUser.accessToken}`;
+            config.headers.Authorization = `User ${newUser.accessToken} `;
             return config;
           }
           if (!config.headers) config.headers = {};
-          config.headers.Authorization = `User ${accessToken}`;
+          config.headers.Authorization = `User ${accessToken} `;
         }
         return config;
       },
@@ -390,7 +393,7 @@ class Bitloops {
   private async refreshToken(): Promise<BitloopsUser> {
     const { config } = this;
     const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server
-      }/bitloops/auth/refreshToken`;
+      }/bitloops/auth / refreshToken`;
     const user = await this.auth.getUser();
     if (!user?.refreshToken) throw new Error('no refresh token');
     const body = {

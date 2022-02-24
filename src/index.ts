@@ -230,9 +230,8 @@ class Bitloops {
       this.eventMap.delete(namedEvent);
       if (this.eventMap.size === 0) this.subscribeConnection.close();
 
-      const unsubscribeUrl = `${this.httpSecure()}://${
-        this.config.server
-      } /bitloops/events / unsubscribe / ${subscriptionId} `;
+      const unsubscribeUrl = `${this.httpSecure()}://${this.config.server
+        } /bitloops/events/unsubscribe/${subscriptionId}`;
 
       const headers = await this.getAuthHeaders();
 
@@ -253,9 +252,8 @@ class Bitloops {
    * @returns
    */
   private async registerTopicORConnection(subscriptionId: string, namedEvent: string) {
-    const subscribeUrl = `${this.httpSecure()}://${
-      this.config.server
-    }/bitloops/events / subscribe / ${subscriptionId} `;
+    const subscribeUrl = `${this.httpSecure()}://${this.config.server
+      }/bitloops/events/subscribe/${subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
     try {
@@ -307,7 +305,7 @@ class Bitloops {
 
   private async setupEventSource() {
     const { subscriptionId } = this;
-    const url = `${this.httpSecure()}://${this.config.server}/bitloops/events / ${subscriptionId} `;
+    const url = `${this.httpSecure()}://${this.config.server}/bitloops/events/${subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
     const eventSourceInitDict = { headers };
@@ -416,9 +414,8 @@ class Bitloops {
 
   private async refreshToken(): Promise<BitloopsUser> {
     const { config } = this;
-    const url = `${config?.ssl === false ? 'http' : 'https'}://${
-      config?.server
-    }/bitloops/auth / refreshToken`;
+    const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server
+      }/bitloops/auth/refreshToken`;
     const user = await this.auth.getUser();
     if (!user?.refreshToken) throw new Error('no refresh token');
     const body = {

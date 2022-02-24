@@ -1,6 +1,12 @@
 import open from 'open';
 import axios from 'axios';
-import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig } from '../definitions';
+import {
+  AuthTypes,
+  IInternalStorage,
+  BitloopsUser,
+  BitloopsConfig,
+  Unsubscribe,
+} from '../definitions';
 // eslint-disable-next-line import/no-cycle
 import Bitloops from '../index';
 import { IAuthService } from './types';
@@ -76,7 +82,7 @@ class AuthServer implements IAuthService {
     return this.storage.getUser();
   }
 
-  async onAuthStateChange() {
+  async onAuthStateChange(): Promise<Unsubscribe> {
     throw new Error('Unimplemented');
   }
 

@@ -173,7 +173,7 @@ class Bitloops {
       this.sseIsBeingInitialized = false;
       throw new Error(`Unsubscribe error:  ${JSON.stringify(error)}`);
     }
-    console.log('registerTopicORConnection success', response.data);
+    // console.log('registerTopicORConnection success', response.data);
 
     /** If you are the initiator, establish sse connection */
     if (this.sseIsBeingInitialized === true && this.subscriptionId === '') {
@@ -190,6 +190,7 @@ class Bitloops {
       callback(JSON.parse(event.data));
     };
     // console.log('this.subscribeConnection', this.subscribeConnection);
+    console.log(`ade event listener for namedEvent: ${namedEvent}`);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
     return this.unsubscribe({ namedEvent, subscriptionId: this.subscriptionId, listenerCallback });
@@ -224,23 +225,27 @@ class Bitloops {
    * @returns void
    */
   private unsubscribe({ subscriptionId, namedEvent, listenerCallback }: UnsubscribeParams) {
+    // console.log('namedEvent outside', namedEvent);
     return async (): Promise<void> => {
-      this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
+      // console.log('namedEvent inside', namedEvent);
 
+      this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
+      console.log(`removed eventListener for ${namedEvent}`);
       this.eventMap.delete(namedEvent);
       if (this.eventMap.size === 0) this.subscribeConnection.close();
 
       const unsubscribeUrl = `${this.httpSecure()}://${this.config.server
-        } /bitloops/events/unsubscribe/${subscriptionId}`;
+        }/bitloops/events/unsubscribe/${subscriptionId}`;
 
       const headers = await this.getAuthHeaders();
 
-      await Bitloops.axiosInstance({
+
+      await this.axiosHandler({
         url: unsubscribeUrl,
         method: 'POST',
         headers,
         data: { workspaceId: this.config.workspaceId },
-      });
+      }, Bitloops.axiosInstance);
     };
   }
 
@@ -285,19 +290,19 @@ class Bitloops {
   }
 
   private async tryToResubscribe() {
-    console.log('Attempting to resubscribe');
-    console.log(' this.eventMap.length', this.eventMap.size);
+    // console.log('Attempting to resubscribe');
+    // console.log(' this.eventMap.length', this.eventMap.size);
     const subscribePromises = Array.from(this.eventMap.entries()).map(([namedEvent, callback]) =>
       this.subscribe(namedEvent, callback),
     );
     try {
-      console.log('this.eventMap length', subscribePromises.length);
+      // console.log('this.eventMap length', subscribePromises.length);
       await Promise.all(subscribePromises);
       console.log('Resubscribed all topic successfully!');
       // All subscribes were successful => done
     } catch (error) {
       // >= 1 subscribes failed => retry
-      console.log(`Failed to resubscribe, retrying... in ${this.reconnectFreqSecs}`);
+      // console.log(`Failed to resubscribe, retrying... in ${this.reconnectFreqSecs}`);
       this.subscribeConnection.close();
       this.sseReconnect();
     }
@@ -335,6 +340,7 @@ class Bitloops {
       const res = await axiosInst(config);
       return { data: res, error: null };
     } catch (error) {
+
       if (axios.isAxiosError(error)) {
         return { data: error.response, error };
       }
@@ -397,7 +403,7 @@ class Bitloops {
         const bitloopsConfig = this.config;
         if (
           bitloopsConfig?.auth?.authenticationType === AuthTypes.User &&
-          error.response.status === 401 &&
+          error?.response?.status === 401 &&
           !originalRequest.retry
         ) {
           originalRequest.retry = true;

@@ -187,6 +187,7 @@ class Bitloops {
      */
 
     const listenerCallback = (event: MessageEvent<any>) => {
+      console.log(`received event for namedEvent: ${namedEvent}`);
       callback(JSON.parse(event.data));
     };
     // console.log('this.subscribeConnection', this.subscribeConnection);
@@ -252,7 +253,7 @@ class Bitloops {
    */
   private sseReconnect() {
     setTimeout(async () => {
-      console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
+      // console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
       // await this.setupEventSource();
       this.reconnectFreqSecs = this.reconnectFreqSecs >= 60 ? 60 : this.reconnectFreqSecs * 2;
       return this.tryToResubscribe();
@@ -272,6 +273,7 @@ class Bitloops {
       // All subscribes were successful => done
     } catch (error) {
       // >= 1 subscribes failed => retry
+      console.log(`Failed to resubscribe, retrying... in ${this.reconnectFreqSecs}`);
       this.subscribeConnection.close();
       this.sseReconnect();
     }

@@ -225,27 +225,27 @@ class Bitloops {
    * @returns void
    */
   private unsubscribe({ subscriptionId, namedEvent, listenerCallback }: UnsubscribeParams) {
-    // console.log('namedEvent outside', namedEvent);
     return async (): Promise<void> => {
-      // console.log('namedEvent inside', namedEvent);
-
       this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
       console.log(`removed eventListener for ${namedEvent}`);
       this.eventMap.delete(namedEvent);
       if (this.eventMap.size === 0) this.subscribeConnection.close();
 
-      const unsubscribeUrl = `${this.httpSecure()}://${this.config.server
-        }/bitloops/events/unsubscribe/${subscriptionId}`;
+      const unsubscribeUrl = `${this.httpSecure()}://${
+        this.config.server
+      }/bitloops/events/unsubscribe/${subscriptionId}`;
 
       const headers = await this.getAuthHeaders();
 
-
-      await this.axiosHandler({
-        url: unsubscribeUrl,
-        method: 'POST',
-        headers,
-        data: { workspaceId: this.config.workspaceId },
-      }, Bitloops.axiosInstance);
+      await this.axiosHandler(
+        {
+          url: unsubscribeUrl,
+          method: 'POST',
+          headers,
+          data: { workspaceId: this.config.workspaceId, topic: namedEvent },
+        },
+        Bitloops.axiosInstance,
+      );
     };
   }
 
@@ -257,8 +257,9 @@ class Bitloops {
    * @returns
    */
   private async registerTopicORConnection(subscriptionId: string, namedEvent: string) {
-    const subscribeUrl = `${this.httpSecure()}://${this.config.server
-      }/bitloops/events/subscribe/${subscriptionId}`;
+    const subscribeUrl = `${this.httpSecure()}://${
+      this.config.server
+    }/bitloops/events/subscribe/${subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
     try {
@@ -340,7 +341,6 @@ class Bitloops {
       const res = await axiosInst(config);
       return { data: res, error: null };
     } catch (error) {
-
       if (axios.isAxiosError(error)) {
         return { data: error.response, error };
       }
@@ -420,8 +420,9 @@ class Bitloops {
 
   private async refreshToken(): Promise<BitloopsUser> {
     const { config } = this;
-    const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server
-      }/bitloops/auth/refreshToken`;
+    const url = `${config?.ssl === false ? 'http' : 'https'}://${
+      config?.server
+    }/bitloops/auth/refreshToken`;
     const user = await this.auth.getUser();
     if (!user?.refreshToken) throw new Error('no refresh token');
     const body = {

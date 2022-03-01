@@ -147,7 +147,7 @@ class Bitloops {
     namedEvent: string,
     callback: (data: DataType) => void,
   ): Promise<Unsubscribe> {
-    console.log('subscribing topic:', namedEvent);
+    // console.log('subscribing topic:', namedEvent);
     this.eventMap.set(namedEvent, callback);
     /** Retry if connection is being initialized */
     if (this.subscriptionId === '' && this.sseIsBeingInitialized) {
@@ -186,11 +186,11 @@ class Bitloops {
      */
 
     const listenerCallback = (event: MessageEvent<any>) => {
-      console.log(`received event for namedEvent: ${namedEvent}`);
+      // console.log(`received event for namedEvent: ${namedEvent}`);
       callback(JSON.parse(event.data));
     };
     // console.log('this.subscribeConnection', this.subscribeConnection);
-    console.log(`ade event listener for namedEvent: ${namedEvent}`);
+    // console.log(`add event listener for namedEvent: ${namedEvent}`);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
     return this.unsubscribe({ namedEvent, subscriptionId: this.subscriptionId, listenerCallback });
@@ -227,7 +227,7 @@ class Bitloops {
   private unsubscribe({ subscriptionId, namedEvent, listenerCallback }: UnsubscribeParams) {
     return async (): Promise<void> => {
       this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
-      console.log(`removed eventListener for ${namedEvent}`);
+      // console.log(`removed eventListener for ${namedEvent}`);
       this.eventMap.delete(namedEvent);
       if (this.eventMap.size === 0) this.subscribeConnection.close();
 
@@ -299,7 +299,7 @@ class Bitloops {
     try {
       // console.log('this.eventMap length', subscribePromises.length);
       await Promise.all(subscribePromises);
-      console.log('Resubscribed all topic successfully!');
+      // console.log('Resubscribed all topic successfully!');
       // All subscribes were successful => done
     } catch (error) {
       // >= 1 subscribes failed => retry
@@ -324,9 +324,10 @@ class Bitloops {
       this.reconnectFreqSecs = 1;
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     this.subscribeConnection.onerror = (error: any) => {
       // on error, rest will clear our connectionId so we need to create a new one
-      console.log('subscribeConnection.onerror, closing and re-trying', error);
+      // console.log('subscribeConnection.onerror, closing and re-trying', error);
       this.subscribeConnection.close();
       this.subscriptionId = '';
       this.sseReconnect();
@@ -370,7 +371,7 @@ class Bitloops {
           // console.log('isAccessTokenExpired', isAccessTokenExpired);
 
           if (isRefreshTokenExpired) {
-            console.log('refresh expired, logging out');
+            // console.log('refresh expired, logging out');
             this.auth.clearAuthentication();
             return {
               ...config,
@@ -378,14 +379,14 @@ class Bitloops {
             };
           }
           if (isAccessTokenExpired) {
-            console.log('access token expired');
+            // console.log('access token expired');
             const newUser = await this.refreshToken();
             if (!config.headers) config.headers = {};
-            config.headers.Authorization = `User ${newUser.accessToken} `;
+            config.headers.Authorization = `User ${newUser.accessToken}`;
             return config;
           }
           if (!config.headers) config.headers = {};
-          config.headers.Authorization = `User ${accessToken} `;
+          config.headers.Authorization = `User ${accessToken}`;
         }
         return config;
       },
@@ -407,7 +408,7 @@ class Bitloops {
           !originalRequest.retry
         ) {
           originalRequest.retry = true;
-          console.log('before refreshh');
+          // console.log('before refreshh');
           await this.refreshToken();
           return instance.request(originalRequest);
         }
@@ -435,7 +436,7 @@ class Bitloops {
       axios,
     );
     if (error) {
-      console.log('Refresh token was invalid');
+      // console.log('Refresh token was invalid');
       // invalid refresh token
       // clean refresh_token
       // logout user
@@ -449,7 +450,7 @@ class Bitloops {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
-    console.log('Updated refresh token');
+    // console.log('Updated refresh token');
     await this.storage.saveUser(newUser);
     return newUser;
   }

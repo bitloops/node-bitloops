@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-extraneous-dependencies
 import keytar from 'keytar';
 import { BitloopsUser, IInternalStorage, StorageKeys } from '../definitions';
 

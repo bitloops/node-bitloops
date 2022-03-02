@@ -3,7 +3,7 @@ import keytar from 'keytar';
 import { BitloopsUser, IInternalStorage, StorageKeys } from '../definitions';
 
 // TODO decide if globalObject is the best choice
-class GlobalObject implements IInternalStorage {
+class CredentialsStorage implements IInternalStorage {
   constructor(private readonly account = 'Bitloops') {}
   //   saveBitloopsConfig(bitloopsConfig: BitloopsConfig) {
   //     global[LOCAL_STORAGE.BITLOOPS_CONFIG] = bitloopsConfig;
@@ -51,4 +51,4 @@ class GlobalObject implements IInternalStorage {
   }
 }
 
-export default GlobalObject;
+export default CredentialsStorage;

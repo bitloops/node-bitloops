@@ -12,7 +12,8 @@ class GhostStorage implements IInternalStorage {
 
   async getSessionUuid(): Promise<string | null> {
     const error = new Error(GHOST_STORAGE_ERROR_MESSAGE);
-    return Promise.reject(error);
+    console.error(error);
+    return Promise.resolve(null);
   }
 
   async deleteSessionUuid(): Promise<void> {
@@ -22,17 +23,20 @@ class GhostStorage implements IInternalStorage {
 
   async saveUser(bitloopsUser: BitloopsUser): Promise<void> {
     const error = new Error(GHOST_STORAGE_ERROR_MESSAGE + JSON.stringify(bitloopsUser));
-    return Promise.reject(error);
+    console.error(error);
+    return Promise.resolve();
   }
 
   async getUser(): Promise<BitloopsUser | null> {
     const error = new Error(GHOST_STORAGE_ERROR_MESSAGE);
-    return Promise.reject(error);
+    console.error(error);
+    return Promise.resolve(null);
   }
 
   async deleteUser(): Promise<void> {
     const error = new Error(GHOST_STORAGE_ERROR_MESSAGE);
-    return Promise.reject(error);
+    console.error(error);
+    return Promise.resolve();
   }
 }
 

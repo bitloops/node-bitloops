@@ -1,19 +1,19 @@
 import { AxiosError, AxiosResponse } from 'axios';
 
 export type BitloopsUser = {
+  accessToken: string;
+  refreshToken: string;
+  sessionState: string;
+  uid: string;
   displayName: string;
   firstName: string;
   lastName: string;
-  uid: string;
   email: string;
   emailVerified: string;
   isAnonymous: boolean;
   providerId: string;
   clientId: string;
-  accessToken: string;
-  refreshToken: string;
-  photoURL?: string;
-  sessionState: string;
+  photoURL: string;
 };
 
 /** Removes subscribe listener */
@@ -23,7 +23,7 @@ export type UnsubscribeParams = {
   subscriptionId: string;
   namedEvent: string;
   listenerCallback: (event: MessageEvent<any>) => void;
-}
+};
 
 export enum AuthTypes {
   Anonymous = 'Anonymous',

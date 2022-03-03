@@ -32,3 +32,8 @@ export const isTokenExpired = (token: string): boolean => {
   const isExpired = Date.now() >= exp * 1000;
   return isExpired;
 };
+
+export const isGoogleServerless = (): boolean => {
+  if (process.env.K_SERVICE) return true;
+  return false;
+};

@@ -41,16 +41,19 @@ class Bitloops {
 
   private readonly eventMap = new Map();
 
-  private static axiosInstance: AxiosInstance;
+  private static axiosInstanceWithRetries: AxiosInstance;
 
   private storage: IInternalStorage;
+
+  private static axios: AxiosInstance;
 
   private constructor(config: BitloopsConfig, storage: IInternalStorage) {
     this.config = config;
     this.storage = storage;
     // this.auth.setBitloops(this);
     this.initializeAuth(storage);
-    Bitloops.axiosInstance = this.interceptAxiosInstance();
+    Bitloops.axiosInstanceWithRetries = this.interceptAxiosInstance();
+    // Bitloops.axios = axios;
   }
 
   private get sseIsBeingInitialized() {
@@ -102,7 +105,7 @@ class Bitloops {
     const url = `${this.httpSecure()}://${this.config.server}/bitloops/request`;
     const { data: response, error } = await this.axiosHandler(
       { url, method: 'POST', data: body, headers },
-      Bitloops.axiosInstance,
+      Bitloops.axiosInstanceWithRetries,
     );
     if (error) {
       return response?.data;
@@ -129,7 +132,7 @@ class Bitloops {
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
-    await Bitloops.axiosInstance.post(
+    await Bitloops.axiosInstanceWithRetries.post(
       `${this.httpSecure()}://${this.config.server}/bitloops/publish`,
       body,
       {
@@ -244,7 +247,7 @@ class Bitloops {
           headers,
           data: { workspaceId: this.config.workspaceId, topic: namedEvent },
         },
-        Bitloops.axiosInstance,
+        Bitloops.axiosInstanceWithRetries,
       );
     };
   }
@@ -263,7 +266,7 @@ class Bitloops {
 
     const headers = await this.getAuthHeaders();
     try {
-      const res = await Bitloops.axiosInstance({
+      const res = await Bitloops.axiosInstanceWithRetries({
         url: subscribeUrl,
         method: 'POST',
         headers,

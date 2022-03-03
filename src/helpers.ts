@@ -50,3 +50,7 @@ export const axiosHandler = async (
     return { data: null, error };
   }
 };
+export const isGoogleServerless = (): boolean => {
+  if (process.env.K_SERVICE) return true;
+  return false;
+};

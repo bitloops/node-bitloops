@@ -7,6 +7,8 @@ export interface IAuthService {
   onAuthStateChange: (
     authChangeCallback: (user: BitloopsUser | null) => void,
   ) => Promise<Unsubscribe>;
+  sendVerificationCode(phone: string): Promise<void>;
+  verifyPhoneCode(phone: string, code: string): Promise<void>;
 }
 
 export type ServerParams = {

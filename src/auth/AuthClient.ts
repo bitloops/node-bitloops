@@ -4,11 +4,14 @@ import { AuthTypes, IInternalStorage, BitloopsUser } from '../definitions';
 // eslint-disable-next-line import/no-cycle
 import Bitloops from '../index';
 import { IAuthService } from './types';
+import { axiosHandler, parseJwt } from '../helpers';
 
 class AuthClient implements IAuthService {
   private bitloops: Bitloops;
 
   private storage: IInternalStorage;
+
+  private authChangeCallback: (user: BitloopsUser | null) => void;
 
   constructor(bitloops: Bitloops, storage: IInternalStorage) {
     this.bitloops = bitloops;
@@ -36,8 +39,105 @@ class AuthClient implements IAuthService {
     window.open(url, '_blank');
   }
 
+  async sendVerificationCode(phone: string): Promise<void> {
+    // It's not a simple bitloops.request, we want a specific environment (production)
+    // not a user defined environment created for his services
+    const config = this.bitloops.getConfig();
+
+    if (config.auth?.authenticationType !== AuthTypes.User)
+      throw new Error('AuthType must be user in order to use phone auth');
+
+    const { workspaceId, ssl, server, auth } = config;
+    const headers = {
+      Authorization: 'Unauthorized',
+      'workspace-id': workspaceId,
+      'environment-id': 'development', // not config.environmentId;
+      'workflow-id': '3408dc57-fd96-4e0e-b368-667a4f0715a3',
+      'node-id': '01fef4df-ecf4-4836-b2e2-3f62b209ecf7',
+      'Content-Type': 'application/json',
+    };
+    const body = {
+      providerId: auth.providerId,
+      phoneNumber: phone,
+    };
+
+    const protocol = ssl === false ? 'http' : 'https';
+    const url = `${protocol}://${server}/bitloops/request`;
+    const { data: response, error } = await axiosHandler({
+      url,
+      method: 'POST',
+      data: body,
+      headers,
+    });
+    if (error) {
+      console.error(response?.data);
+      return;
+    }
+
+    if (!response) console.error('unexpected error', error, response);
+
+    console.log('sendVerificationCode response', response);
+  }
+
+  async verifyPhoneCode(phone: string, code: string): Promise<void> {
+    const config = this.bitloops.getConfig();
+
+    if (config.auth?.authenticationType !== AuthTypes.User)
+      throw new Error('AuthType must be user in order to use phone auth');
+
+    const { workspaceId, ssl, server, auth } = config;
+    const headers = {
+      Authorization: 'Unauthorized',
+      'workspace-id': workspaceId,
+      'environment-id': 'development', // config.environmentId;
+      'workflow-id': '3408dc57-fd96-4e0e-b368-667a4f0715a3',
+      'node-id': 'f53dd6e8-45f4-4541-8784-ddea0e5f6af0',
+      'Content-Type': 'application/json',
+    };
+
+    const body = {
+      providerId: auth.providerId,
+      phoneNumber: phone,
+      verificationCode: code,
+      clientId: auth.clientId,
+    };
+
+    const protocol = ssl === false ? 'http' : 'https';
+    const url = `${protocol}://${server}/bitloops/request`;
+    const { data: response, error } = await axiosHandler({
+      url,
+      method: 'POST',
+      data: body,
+      headers,
+    });
+    if (error) {
+      throw new Error(response?.data);
+    }
+
+    if (!response) throw new Error('Error');
+    console.log('verifyPhoneCode response', response);
+    const {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      session_state: sessionState,
+    } = response.data;
+    console.log('parsedJwt', parseJwt(accessToken));
+    const { sub: uid, preferred_username: username } = parseJwt(accessToken);
+
+    const user: Partial<BitloopsUser> = {
+      accessToken,
+      refreshToken,
+      sessionState,
+      uid,
+      displayName: username,
+    };
+    // TODO fix types of BitloopsUser for different providers
+    await this.storage.saveUser(user as any);
+    // TODO fix types of BitloopsUser for different providers
+    this.authChangeCallback(user as BitloopsUser);
+  }
+
   async clearAuthentication() {
-    // TODO communicate logout to REST
     console.log('node bitloops logout called');
     const user = await this.getUser();
     const config = this.bitloops.getConfig();
@@ -53,14 +153,20 @@ class AuthClient implements IAuthService {
         workspaceId: config.workspaceId,
       };
       const headers = {};
-      await axios.post(
-        `${config?.ssl ? 'https' : 'http'}://${config?.server}/bitloops/auth/clearAuthentication`,
-        body,
-        {
-          headers,
-        },
-      );
-      await this.storage.deleteUser();
+      try {
+        await axios.post(
+          `${config?.ssl ? 'https' : 'http'}://${config?.server}/bitloops/auth/clearAuthentication`,
+          body,
+          {
+            headers,
+          },
+        );
+      } catch (error) {
+        console.log('clearAuthentication failed:', error?.response?.status);
+        // TODO manually call AuthStateChanged with null values?
+      } finally {
+        await this.storage.deleteUser();
+      }
     }
   }
 
@@ -74,6 +180,7 @@ class AuthClient implements IAuthService {
   async onAuthStateChange(authChangeCallback: (user: BitloopsUser | null) => void) {
     // 1. User is unauthorized and subscribes to onAuthStateChange => we use the sessionUuid
     // 2. User is authorized and subscribed to onAuthStateChange => we use the sessionUuid
+    this.authChangeCallback = authChangeCallback;
 
     const user = await this.getUser();
     const config = this.bitloops.getConfig();

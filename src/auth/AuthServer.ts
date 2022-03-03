@@ -26,6 +26,14 @@ class AuthServer implements IAuthService {
     this.storage = storage;
   }
 
+  sendVerificationCode(phone: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  verifyPhoneCode(phone: string, code: string): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   async authenticateWithGoogle(serverParams?: ServerParams) {
     const config = this.bitloops.getConfig();
     if (!serverParams?.requestParams) {

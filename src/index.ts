@@ -41,16 +41,19 @@ class Bitloops {
 
   private readonly eventMap = new Map();
 
-  private static axiosInstance: AxiosInstance;
+  private static axiosInstanceWithRetries: AxiosInstance;
 
   private storage: IInternalStorage;
+
+  private static axios: AxiosInstance;
 
   private constructor(config: BitloopsConfig, storage: IInternalStorage) {
     this.config = config;
     this.storage = storage;
     // this.auth.setBitloops(this);
     this.initializeAuth(storage);
-    Bitloops.axiosInstance = this.interceptAxiosInstance();
+    Bitloops.axiosInstanceWithRetries = this.interceptAxiosInstance();
+    // Bitloops.axios = axios;
   }
 
   private get sseIsBeingInitialized() {
@@ -102,7 +105,7 @@ class Bitloops {
     const url = `${this.httpSecure()}://${this.config.server}/bitloops/request`;
     const { data: response, error } = await this.axiosHandler(
       { url, method: 'POST', data: body, headers },
-      Bitloops.axiosInstance,
+      Bitloops.axiosInstanceWithRetries,
     );
     if (error) {
       return response?.data;
@@ -129,7 +132,7 @@ class Bitloops {
     if (options?.payload) body = { ...body, ...options.payload };
     else if (options) body = { ...body, ...options };
 
-    await Bitloops.axiosInstance.post(
+    await Bitloops.axiosInstanceWithRetries.post(
       `${this.httpSecure()}://${this.config.server}/bitloops/publish`,
       body,
       {
@@ -147,7 +150,7 @@ class Bitloops {
     namedEvent: string,
     callback: (data: DataType) => void,
   ): Promise<Unsubscribe> {
-    // console.log('subscribing topic:', namedEvent);
+    console.log('subscribing topic:', namedEvent);
     this.eventMap.set(namedEvent, callback);
     /** Retry if connection is being initialized */
     if (this.subscriptionId === '' && this.sseIsBeingInitialized) {
@@ -165,15 +168,19 @@ class Bitloops {
      * and sse connection is being Initialized
      * If you are the initiator, response contains new subscriptionId from server
      */
-    const [response, error] = await this.registerTopicORConnection(this.subscriptionId, namedEvent);
+    const { data: response, error } = await this.registerTopicORConnection(
+      this.subscriptionId,
+      namedEvent,
+    );
 
     if (error || response === null) {
-      console.error('registerTopicORConnection error');
+      console.error('registerTopicORConnection error', error);
       // console.error('registerTopicORConnection', error);
       this.sseIsBeingInitialized = false;
-      throw new Error(`Unsubscribe error:  ${JSON.stringify(error)}`);
+      // TODO differentiate errors - Throw on host unreachable
+      throw new Error(`Got error response from REST:  ${JSON.stringify(error)}`);
     }
-    // console.log('registerTopicORConnection success', response.data);
+    console.log('registerTopicORConnection success', response.data);
 
     /** If you are the initiator, establish sse connection */
     if (this.sseIsBeingInitialized === true && this.subscriptionId === '') {
@@ -186,11 +193,11 @@ class Bitloops {
      */
 
     const listenerCallback = (event: MessageEvent<any>) => {
-      // console.log(`received event for namedEvent: ${namedEvent}`);
+      console.log(`received event for namedEvent: ${namedEvent}`);
       callback(JSON.parse(event.data));
     };
-    // console.log('this.subscribeConnection', this.subscribeConnection);
-    // console.log(`add event listener for namedEvent: ${namedEvent}`);
+    console.log('this.subscribeConnection', this.subscribeConnection);
+    console.log(`add event listener for namedEvent: ${namedEvent}`);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
     return this.unsubscribe({ namedEvent, subscriptionId: this.subscriptionId, listenerCallback });
@@ -227,7 +234,7 @@ class Bitloops {
   private unsubscribe({ subscriptionId, namedEvent, listenerCallback }: UnsubscribeParams) {
     return async (): Promise<void> => {
       this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
-      // console.log(`removed eventListener for ${namedEvent}`);
+      console.log(`removed eventListener for ${namedEvent}`);
       this.eventMap.delete(namedEvent);
       if (this.eventMap.size === 0) this.subscribeConnection.close();
 
@@ -244,7 +251,7 @@ class Bitloops {
           headers,
           data: { workspaceId: this.config.workspaceId, topic: namedEvent },
         },
-        Bitloops.axiosInstance,
+        Bitloops.axiosInstanceWithRetries,
       );
     };
   }
@@ -262,19 +269,21 @@ class Bitloops {
     }/bitloops/events/subscribe/${subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
+    console.log('Sending headers', headers);
     try {
-      const res = await Bitloops.axiosInstance({
+      const res = await Bitloops.axiosInstanceWithRetries({
         url: subscribeUrl,
         method: 'POST',
         headers,
         data: { topics: [namedEvent], workspaceId: this.config.workspaceId },
       });
-      return [res, null];
+      return { data: res, error: null };
     } catch (error) {
+      console.log('axios Error');
       if (axios.isAxiosError(error)) {
-        return [error.response ?? null, error];
+        return { data: null, error: error.response };
       }
-      return [null, error];
+      return { data: null, error };
     }
   }
 
@@ -283,7 +292,7 @@ class Bitloops {
    */
   private sseReconnect() {
     setTimeout(async () => {
-      // console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
+      console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
       // await this.setupEventSource();
       this.reconnectFreqSecs = this.reconnectFreqSecs >= 60 ? 60 : this.reconnectFreqSecs * 2;
       return this.tryToResubscribe();
@@ -291,19 +300,19 @@ class Bitloops {
   }
 
   private async tryToResubscribe() {
-    // console.log('Attempting to resubscribe');
-    // console.log(' this.eventMap.length', this.eventMap.size);
+    console.log('Attempting to resubscribe');
+    console.log(' this.eventMap.length', this.eventMap.size);
     const subscribePromises = Array.from(this.eventMap.entries()).map(([namedEvent, callback]) =>
       this.subscribe(namedEvent, callback),
     );
     try {
-      // console.log('this.eventMap length', subscribePromises.length);
+      console.log('this.eventMap length', subscribePromises.length);
       await Promise.all(subscribePromises);
-      // console.log('Resubscribed all topic successfully!');
+      console.log('Resubscribed all topic successfully!');
       // All subscribes were successful => done
     } catch (error) {
       // >= 1 subscribes failed => retry
-      // console.log(`Failed to resubscribe, retrying... in ${this.reconnectFreqSecs}`);
+      console.log(`Failed to resubscribe, retrying... in ${this.reconnectFreqSecs}`);
       this.subscribeConnection.close();
       this.sseReconnect();
     }
@@ -327,7 +336,7 @@ class Bitloops {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     this.subscribeConnection.onerror = (error: any) => {
       // on error, rest will clear our connectionId so we need to create a new one
-      // console.log('subscribeConnection.onerror, closing and re-trying', error);
+      console.log('subscribeConnection.onerror, closing and re-trying', error);
       this.subscribeConnection.close();
       this.subscriptionId = '';
       this.sseReconnect();
@@ -367,11 +376,11 @@ class Bitloops {
           const isRefreshTokenExpired = isTokenExpired(refreshToken);
           const isAccessTokenExpired = isTokenExpired(accessToken);
 
-          // console.log('isRefreshTokenExpired', isRefreshTokenExpired);
-          // console.log('isAccessTokenExpired', isAccessTokenExpired);
+          console.log('isRefreshTokenExpired', isRefreshTokenExpired);
+          console.log('isAccessTokenExpired', isAccessTokenExpired);
 
           if (isRefreshTokenExpired) {
-            // console.log('refresh expired, logging out');
+            console.log('refresh expired, logging out');
             this.auth.clearAuthentication();
             return {
               ...config,
@@ -379,7 +388,7 @@ class Bitloops {
             };
           }
           if (isAccessTokenExpired) {
-            // console.log('access token expired');
+            console.log('access token expired');
             const newUser = await this.refreshToken();
             if (!config.headers) config.headers = {};
             config.headers.Authorization = `User ${newUser.accessToken}`;
@@ -408,7 +417,7 @@ class Bitloops {
           !originalRequest.retry
         ) {
           originalRequest.retry = true;
-          // console.log('before refreshh');
+          console.log('Got 401 response, refreshing token...');
           await this.refreshToken();
           return instance.request(originalRequest);
         }
@@ -419,6 +428,10 @@ class Bitloops {
     return instance;
   }
 
+  /**
+   * Tries to refresh token, token must be signed for our clientId,
+   * and not expired for success
+   */
   private async refreshToken(): Promise<BitloopsUser> {
     const { config } = this;
     const url = `${config?.ssl === false ? 'http' : 'https'}://${
@@ -436,7 +449,7 @@ class Bitloops {
       axios,
     );
     if (error) {
-      // console.log('Refresh token was invalid');
+      console.log('Refresh token was invalid');
       // invalid refresh token
       // clean refresh_token
       // logout user
@@ -450,7 +463,7 @@ class Bitloops {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
-    // console.log('Updated refresh token');
+    console.log('Updated refresh token');
     await this.storage.saveUser(newUser);
     return newUser;
   }

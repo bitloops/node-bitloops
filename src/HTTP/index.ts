@@ -8,8 +8,10 @@
 //   }
 
 //   get();
-//   getWithRetries();
 //   post();
 // }
 
-// class HTTPWithRetries
+// class HTTPWithRetries {
+//   get();
+//   post();
+// }

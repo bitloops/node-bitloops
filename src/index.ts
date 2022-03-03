@@ -178,7 +178,7 @@ class Bitloops {
       // console.error('registerTopicORConnection', error);
       this.sseIsBeingInitialized = false;
       // TODO differentiate errors - Throw on host unreachable
-      throw new Error(`registerTopicORConnection error:  ${JSON.stringify(error)}`);
+      throw new Error(`Got error response from REST:  ${JSON.stringify(error)}`);
     }
     console.log('registerTopicORConnection success', response.data);
 
@@ -208,7 +208,7 @@ class Bitloops {
   }
 
   private async getAuthHeaders() {
-    const headers = { 'Content-Type': 'application/json', Authorization: 'Unauthorized' };
+    const headers = { 'Content-Type': 'application/json', Authorization: 'Unauthorized ' };
     const { config } = this;
     const user = await this.auth.getUser();
     if (config?.auth?.authenticationType === AuthTypes.User && user?.uid) {

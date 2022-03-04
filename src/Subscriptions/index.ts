@@ -6,10 +6,6 @@ import {
   Unsubscribe,
   UnsubscribeParams,
 } from '../definitions';
-// import
-// all sse things here
-// class Subscriber {}
-
 import HTTP from '../HTTP';
 
 export default class ServerSentEvents {

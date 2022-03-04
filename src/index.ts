@@ -40,7 +40,7 @@ class Bitloops {
     const subscriptions = ServerSentEvents.getInstance(http, storage, config);
     this.subscriptions = subscriptions;
 
-    this.auth = AuthFactory.getInstance(storage, subscriptions, config);
+    this.auth = AuthFactory.getInstance(http, storage, subscriptions, config);
   }
 
   public static initialize(config: BitloopsConfig): Bitloops {
@@ -173,7 +173,7 @@ class Bitloops {
           // TODO return null => Cancel request in http interceptor
           return {
             ...httpConfig,
-            cancelToken: new CancelToken((cancel) => cancel('Cancel repeated request')),
+            cancelToken: new CancelToken((cancel) => cancel('Cancel repeated request')), // TODO fix weird Cancel request Message On some subscriptions post requests
           };
         }
         if (isAccessTokenExpired) {

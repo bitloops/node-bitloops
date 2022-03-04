@@ -20,12 +20,12 @@ export default class HTTP {
 
   public constructor(...args: any[]) {
     if (args.length === 0) {
-      // console.log('Used constructor 1');
+      console.log('Used constructor 1');
       this.axiosInstance = axios;
       return;
     }
     if (args.length === 2) {
-      // console.log('Used constructor 2');
+      console.log('Used constructor 2');
       const [interceptRequest, interceptResponse] = args;
       this.axiosInstance = this.interceptAxiosInstance(interceptRequest, interceptResponse);
       return;
@@ -57,9 +57,6 @@ export default class HTTP {
     }
   }
 
-  //   get();
-  //   post();
-
   /** [1] https://thedutchlab.com/blog/using-axios-interceptors-for-refreshing-your-api-token
    *  [2] https://www.npmjs.com/package/axios#interceptors
    */
@@ -68,20 +65,19 @@ export default class HTTP {
     interceptResponse: InterceptResponseError,
   ): AxiosInstance {
     const instance = axios.create();
-    const { CancelToken } = axios;
     // Request interceptor for API calls
     instance.interceptors.request.use(interceptRequest, (error) => {
       // Do something with request error
       Promise.reject(error);
     });
 
-    // Allow automatic updating of access token
+    // Allow to intercept response error
     instance.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
-        const result = await interceptResponse(error);
-        if (result === true) {
+        const needToRetryRequest = await interceptResponse(error);
+        if (needToRetryRequest) {
           originalRequest.retry = true;
           return instance.request(originalRequest);
         }

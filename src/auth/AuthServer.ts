@@ -9,6 +9,7 @@ import {
 } from '../definitions';
 import { IAuthService } from './types';
 import { axiosHandler } from '../helpers';
+import HTTP from '../HTTP';
 
 type ServerParams = {
   requestParams?: any;
@@ -20,9 +21,12 @@ class AuthServer implements IAuthService {
 
   private storage: IInternalStorage;
 
-  constructor(storage: IInternalStorage, bitloopsConfig: BitloopsConfig) {
+  private http: HTTP;
+
+  constructor(storage: IInternalStorage, http: HTTP, bitloopsConfig: BitloopsConfig) {
     this.bitloopsConfig = bitloopsConfig;
     this.storage = storage;
+    this.http = http;
   }
 
   sendVerificationCode(phone: string): Promise<void> {

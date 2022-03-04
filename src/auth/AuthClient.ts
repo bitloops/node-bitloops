@@ -2,8 +2,9 @@ import { v4 as uuid } from 'uuid';
 import axios from 'axios';
 import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig } from '../definitions';
 import { IAuthService } from './types';
-import { axiosHandler, parseJwt } from '../helpers';
+import { parseJwt } from '../helpers';
 import ServerSentEvents from '../Subscriptions';
+import HTTP from '../HTTP';
 
 class AuthClient implements IAuthService {
   private bitloopsConfig: BitloopsConfig;
@@ -12,16 +13,20 @@ class AuthClient implements IAuthService {
 
   private storage: IInternalStorage;
 
+  private http: HTTP;
+
   private authChangeCallback: (user: BitloopsUser | null) => void;
 
   constructor(
     subscriptions: ServerSentEvents,
     storage: IInternalStorage,
+    http: HTTP,
     bitloopsConfig: BitloopsConfig,
   ) {
     this.bitloopsConfig = bitloopsConfig;
     this.storage = storage;
     this.subscriptions = subscriptions;
+    this.http = http;
 
     this.initializeSession();
   }
@@ -70,7 +75,7 @@ class AuthClient implements IAuthService {
 
     const protocol = ssl === false ? 'http' : 'https';
     const url = `${protocol}://${server}/bitloops/request`;
-    const { data: response, error } = await axiosHandler({
+    const { data: response, error } = await this.http.handlerWithoutRetries({
       url,
       method: 'POST',
       data: body,
@@ -111,7 +116,7 @@ class AuthClient implements IAuthService {
 
     const protocol = ssl === false ? 'http' : 'https';
     const url = `${protocol}://${server}/bitloops/request`;
-    const { data: response, error } = await axiosHandler({
+    const { data: response, error } = await this.http.handlerWithoutRetries({
       url,
       method: 'POST',
       data: body,

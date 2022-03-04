@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { AxiosHandlerOutcome, JWTData } from './definitions';
+import { JWTData } from './definitions';
+import { AxiosHandlerOutcome } from './HTTP/definitions';
 
 export const wait = (ms: number) =>
   new Promise((resolve) => {
@@ -36,20 +37,6 @@ export const isTokenExpired = (token: string): boolean => {
   return isExpired;
 };
 
-export const axiosHandler = async (
-  config: AxiosRequestConfig,
-  axiosInst: AxiosInstance = axios,
-): Promise<AxiosHandlerOutcome> => {
-  try {
-    const res = await axiosInst(config);
-    return { data: res, error: null };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return { data: error.response, error };
-    }
-    return { data: null, error };
-  }
-};
 export const isGoogleServerless = (): boolean => {
   if (process.env.K_SERVICE) return true;
   return false;

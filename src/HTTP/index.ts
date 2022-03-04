@@ -20,12 +20,12 @@ export default class HTTP {
 
   public constructor(...args: any[]) {
     if (args.length === 0) {
-      console.log('Used constructor 1');
+      // console.log('Used constructor 1');
       this.axiosInstance = axios;
       return;
     }
     if (args.length === 2) {
-      console.log('Used constructor 2');
+      // console.log('Used constructor 2');
       const [interceptRequest, interceptResponse] = args;
       this.axiosInstance = this.interceptAxiosInstance(interceptRequest, interceptResponse);
       return;

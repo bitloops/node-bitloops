@@ -1,5 +1,4 @@
 import open from 'open';
-import axios from 'axios';
 import {
   AuthTypes,
   IInternalStorage,
@@ -8,7 +7,6 @@ import {
   Unsubscribe,
 } from '../definitions';
 import { IAuthService } from './types';
-import { axiosHandler } from '../helpers';
 import HTTP from '../HTTP';
 
 type ServerParams = {
@@ -75,13 +73,17 @@ class AuthServer implements IAuthService {
         refreshToken,
       };
       const headers = {};
-      await axios.post(
-        `${config?.ssl ? 'https' : 'http'}://${config?.server}/bitloops/auth/clearAuthentication`,
-        body,
-        {
-          headers,
-        },
-      );
+      const { error } = await this.http.handlerWithoutRetries({
+        url: `${config?.ssl ? 'https' : 'http'}://${
+          config?.server
+        }/bitloops/auth/clearAuthentication`,
+        method: 'POST',
+        data: body,
+        headers,
+      });
+      if (error) {
+        console.log('clearAuthentication failed:', (error as any)?.response?.status);
+      }
       await this.storage.deleteUser();
     }
   }
@@ -144,7 +146,7 @@ class AuthServer implements IAuthService {
     };
     const protocol = ssl === false ? 'http' : 'https';
     const url = `${protocol}://${server}/bitloops/request`;
-    const { data: response, error } = await axiosHandler({
+    const { data: response, error } = await this.http.handlerWithoutRetries({
       url,
       method: 'POST',
       data: body,

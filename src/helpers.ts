@@ -37,21 +37,6 @@ export const isTokenExpired = (token: string): boolean => {
   return isExpired;
 };
 
-export const axiosHandler = async (
-  config: AxiosRequestConfig,
-  axiosInst: AxiosInstance = axios,
-): Promise<AxiosHandlerOutcome> => {
-  try {
-    const res = await axiosInst(config);
-    return { data: res, error: null };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return { data: null, error: error.response };
-    }
-    return { data: null, error };
-  }
-};
-
 export const isGoogleServerless = (): boolean => {
   if (process.env.K_SERVICE) return true;
   return false;

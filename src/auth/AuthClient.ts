@@ -1,5 +1,4 @@
 import { v4 as uuid } from 'uuid';
-import axios from 'axios';
 import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig } from '../definitions';
 import { IAuthService } from './types';
 import { parseJwt } from '../helpers';
@@ -153,33 +152,33 @@ class AuthClient implements IAuthService {
     console.log('node bitloops logout called');
     const user = await this.getUser();
     const config = this.bitloopsConfig;
-    if (user && config) {
-      const { accessToken, clientId, providerId, refreshToken } = user;
-      const sessionUuid = await this.storage.getSessionUuid();
-      const body = {
-        accessToken,
-        clientId,
-        providerId,
-        refreshToken,
-        sessionUuid,
-        workspaceId: config.workspaceId,
-      };
-      const headers = {};
-      try {
-        await axios.post(
-          `${config?.ssl ? 'https' : 'http'}://${config?.server}/bitloops/auth/clearAuthentication`,
-          body,
-          {
-            headers,
-          },
-        );
-      } catch (error) {
-        console.log('clearAuthentication failed:', error?.response?.status);
-        // TODO manually call AuthStateChanged with null values?
-      } finally {
-        await this.storage.deleteUser();
-      }
+    if (user === null || config.auth?.authenticationType !== AuthTypes.User) {
+      return;
     }
+    const { accessToken, clientId, providerId, refreshToken } = user;
+    const sessionUuid = await this.storage.getSessionUuid();
+    const body = {
+      accessToken,
+      clientId,
+      providerId,
+      refreshToken,
+      sessionUuid,
+      workspaceId: config.workspaceId,
+    };
+    const headers = {};
+    const { data, error } = await this.http.handlerWithoutRetries({
+      url: `${config?.ssl ? 'https' : 'http'}://${
+        config?.server
+      }/bitloops/auth/clearAuthentication`,
+      method: 'POST',
+      data: body,
+      headers,
+    });
+    if (error) {
+      console.log('clearAuthentication failed:', (error as any)?.response?.status);
+    }
+    // TODO manually call AuthStateChanged with null values?
+    await this.storage.deleteUser();
   }
 
   // registerWithGoogle() {} // TODO implement registration vs authentication

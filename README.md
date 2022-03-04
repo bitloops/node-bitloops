@@ -59,6 +59,8 @@ bitloops.auth.addGitHub();
 bitloops.auth.authenticateWithTwitter();
 bitloops.auth.registerWithTwitter();
 bitloops.auth.addTwitter();
+bitloops.auth.sendVerificationCode(phone);
+bitloops.auth.verifyPhoneCode(phone, code);
 
 bitloops.auth.getUser();
 bitloops.auth.clear();

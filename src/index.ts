@@ -1,9 +1,7 @@
 import axios from 'axios';
-// eslint-disable-next-line import/no-cycle
 import AuthFactory from './auth/AuthFactory';
 import { IAuthService } from './auth/types';
 import {
-  AuthenticationOptionsType,
   AuthTypes,
   BitloopsConfig,
   BitloopsUser,
@@ -16,7 +14,7 @@ import HTTP from './HTTP';
 import InternalStorageFactory from './InternalStorage/InternalStorageFactory';
 import ServerSentEvents from './Subscriptions';
 
-export { AuthTypes, BitloopsConfig, BitloopsUser };
+export { AuthTypes, BitloopsConfig, BitloopsUser, Unsubscribe };
 const DEFAULT_ERR_MSG = 'Server Error';
 
 class Bitloops {
@@ -39,9 +37,10 @@ class Bitloops {
     const http = this.initializeHttp(config);
     this.http = http;
 
-    this.subscriptions = ServerSentEvents.getInstance(http, storage, config);
+    const subscriptions = ServerSentEvents.getInstance(http, storage, config);
+    this.subscriptions = subscriptions;
 
-    this.auth = AuthFactory.getInstance(this, storage);
+    this.auth = AuthFactory.getInstance(storage, subscriptions, config);
   }
 
   public static initialize(config: BitloopsConfig): Bitloops {

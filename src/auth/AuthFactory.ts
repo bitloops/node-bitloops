@@ -1,16 +1,17 @@
-// eslint-disable-next-line import/no-cycle
-import Bitloops from '..';
-import { IInternalStorage } from '../definitions';
+import { BitloopsConfig, IInternalStorage } from '../definitions';
 import { isBrowser } from '../helpers';
-// eslint-disable-next-line import/no-cycle
+import ServerSentEvents from '../Subscriptions';
 import AuthClient from './AuthClient';
-// eslint-disable-next-line import/no-cycle
 import AuthServer from './AuthServer';
 import { IAuthService } from './types';
 
 export default class AuthFactory {
-  static getInstance(bitloops: Bitloops, storage: IInternalStorage): IAuthService {
-    if (isBrowser()) return new AuthClient(bitloops, storage);
-    return new AuthServer(bitloops, storage);
+  static getInstance(
+    storage: IInternalStorage,
+    subscriptions: ServerSentEvents,
+    bitloopsConfig: BitloopsConfig,
+  ): IAuthService {
+    if (isBrowser()) return new AuthClient(subscriptions, storage, bitloopsConfig);
+    return new AuthServer(storage, bitloopsConfig);
   }
 }

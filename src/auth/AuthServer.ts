@@ -7,9 +7,8 @@ import {
   BitloopsConfig,
   Unsubscribe,
 } from '../definitions';
-// eslint-disable-next-line import/no-cycle
-import Bitloops from '../index';
 import { IAuthService } from './types';
+import { axiosHandler } from '../helpers';
 
 type ServerParams = {
   requestParams?: any;
@@ -17,12 +16,12 @@ type ServerParams = {
 };
 
 class AuthServer implements IAuthService {
-  private bitloops: Bitloops;
+  private bitloopsConfig: BitloopsConfig;
 
   private storage: IInternalStorage;
 
-  constructor(bitloops: Bitloops, storage: IInternalStorage) {
-    this.bitloops = bitloops;
+  constructor(storage: IInternalStorage, bitloopsConfig: BitloopsConfig) {
+    this.bitloopsConfig = bitloopsConfig;
     this.storage = storage;
   }
 
@@ -35,29 +34,29 @@ class AuthServer implements IAuthService {
   }
 
   async authenticateWithGoogle(serverParams?: ServerParams) {
-    const config = this.bitloops.getConfig();
+    const config = this.bitloopsConfig;
     if (!serverParams?.requestParams) {
-      console.log('where to redirect');
+      // console.log('where to redirect');
       // needs redirect-uri, to redirect to
       if (!serverParams?.redirectUrl) throw new Error('no redirect url');
       const { redirectUrl } = serverParams;
       const authorizeUrl = this.buildAuthorizeUrl(redirectUrl, config);
-      console.log('authorizeUrl', authorizeUrl);
+      // console.log('authorizeUrl', authorizeUrl);
       open(authorizeUrl);
     } else {
       // called on redirect from google
-      console.log('after redirect');
+      // console.log('after redirect');
       const { requestParams, redirectUrl } = serverParams!;
       const { code } = requestParams;
-      console.log('code', code);
-      console.log('redirectUri', redirectUrl);
+      // console.log('code', code);
+      // console.log('redirectUri', redirectUrl);
       await this.getTokens(code, redirectUrl as string, config);
-      console.log('ended redirect');
+      // console.log('ended redirect');
     }
   }
 
   async clearAuthentication() {
-    const config = this.bitloops.getConfig();
+    const config = this.bitloopsConfig;
     if (config.auth?.authenticationType !== AuthTypes.User) {
       throw new Error('AuthType must be User');
     }
@@ -104,7 +103,7 @@ class AuthServer implements IAuthService {
       response_type: 'code',
       redirect_uri: redirectUrl,
     };
-    console.log('params', data);
+    // console.log('params', data);
     const params = new URLSearchParams(data).toString();
     const BITLOOPS_REST_URL = `${config?.ssl ? 'https' : 'http'}://${
       config?.server
@@ -124,21 +123,40 @@ class AuthServer implements IAuthService {
     }
 
     const { clientId, providerId } = config.auth;
-    console.log('clientId', clientId);
-    console.log('providerId', providerId);
-    const response = await this.bitloops.r(
-      'e1d961e7-ed44-497c-bf8e-902fe29f41a7',
-      '08b7401e-bf41-4e24-9755-82d395253559',
-      {
-        providerId,
-        code,
-        clientId,
-        redirectUri: redirectUrl,
-      },
-    );
-    console.log('response received', response);
-    const { data } = response;
-    console.log('workflow responsed', data);
+    const { workspaceId, ssl, server, environmentId } = config;
+    const headers = {
+      Authorization: 'Unauthorized',
+      'workspace-id': workspaceId,
+      'environment-id': environmentId, // TODO not config.environmentId (OURS-system workflow);
+      'workflow-id': 'e1d961e7-ed44-497c-bf8e-902fe29f41a7',
+      'node-id': '08b7401e-bf41-4e24-9755-82d395253559',
+      'Content-Type': 'application/json',
+    };
+    const body = {
+      providerId,
+      code,
+      clientId,
+      redirectUri: redirectUrl,
+    };
+    const protocol = ssl === false ? 'http' : 'https';
+    const url = `${protocol}://${server}/bitloops/request`;
+    const { data: response, error } = await axiosHandler({
+      url,
+      method: 'POST',
+      data: body,
+      headers,
+    });
+    if (error) {
+      console.error('Exchange tokens workflow failed', error, response);
+      return;
+    }
+
+    if (!response) {
+      console.error('unexpected error', error, response);
+      throw new Error('Exchange tokens workflow failed');
+    }
+    const { data } = response.data;
+    // console.log('workflow responded', data);
     const { access_token: accessToken, refresh_token: refreshToken } = data;
     const user = {
       accessToken,

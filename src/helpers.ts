@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { AxiosHandlerOutcome, JWTData } from './definitions';
+import { JWTData } from './definitions';
+import { AxiosHandlerOutcome } from './HTTP/definitions';
 
 export const wait = (ms: number) =>
   new Promise((resolve) => {
@@ -45,11 +46,12 @@ export const axiosHandler = async (
     return { data: res, error: null };
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      return { data: error.response, error };
+      return { data: null, error: error.response };
     }
     return { data: null, error };
   }
 };
+
 export const isGoogleServerless = (): boolean => {
   if (process.env.K_SERVICE) return true;
   return false;

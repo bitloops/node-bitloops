@@ -36,6 +36,14 @@ class AuthClient implements IAuthService {
   }
 
   async authenticateWithGoogle() {
+    this.authenticateWithProvider('google');
+  }
+
+  async authenticateWithGitHub(): Promise<void> {
+    this.authenticateWithProvider('github');
+  }
+
+  private async authenticateWithProvider(provider: string) {
     const config = this.bitloopsConfig;
     const sessionUuid = await this.storage.getSessionUuid();
     if (config?.auth?.authenticationType !== AuthTypes.User) {
@@ -43,7 +51,7 @@ class AuthClient implements IAuthService {
     }
     const url = `${config?.ssl === false ? 'http' : 'https'}://${
       config?.server
-    }/bitloops/auth/google?client_id=${config?.auth.clientId}&provider_id=${
+    }/bitloops/auth/${provider}?client_id=${config?.auth.clientId}&provider_id=${
       config?.auth.providerId
     }&workspace_id=${config.workspaceId}&session_uuid=${sessionUuid}`;
 

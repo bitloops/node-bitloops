@@ -27,6 +27,10 @@ class AuthServer implements IAuthService {
     this.http = http;
   }
 
+  authenticateWithGitHub(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   sendVerificationCode(phone: string): Promise<void> {
     throw new Error('Method not implemented.');
   }

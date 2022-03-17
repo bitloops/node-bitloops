@@ -8,7 +8,7 @@ import {
 } from '../definitions';
 import { IAuthService } from './types';
 import HTTP from '../HTTP';
-import { isTokenExpired, parseJwt } from '../helpers';
+import { isTokenExpired, jwtToBitloopsUser, parseJwt } from '../helpers';
 
 type ServerParams = {
   requestParams?: any;
@@ -99,6 +99,10 @@ class AuthServer implements IAuthService {
    * Returns the currently signed in user
    */
   async getUser(): Promise<BitloopsUser | null> {
+    const config = this.bitloopsConfig;
+    if (config.auth?.authenticationType !== AuthTypes.User) {
+      throw new Error('AuthType must be User');
+    }
     const credsUser = await this.storage.getUser();
     if (credsUser === null) return null;
     const { accessToken, refreshToken } = credsUser;
@@ -113,9 +117,21 @@ class AuthServer implements IAuthService {
     if (isAccessTokenExpired) {
       console.log('access token expired');
       const newUser = await this.refreshToken();
-      return parseJwt(newUser.accessToken);
+      const jwtData = parseJwt(newUser.accessToken);
+      return jwtToBitloopsUser(
+        jwtData,
+        newUser.accessToken,
+        newUser.refreshToken,
+        config.auth.providerId,
+      );
     }
-    return parseJwt(credsUser.accessToken);
+    const jwtData = parseJwt(credsUser.accessToken);
+    return jwtToBitloopsUser(
+      jwtData,
+      credsUser.accessToken,
+      credsUser.refreshToken,
+      config.auth.providerId,
+    );
   }
 
   async onAuthStateChange(): Promise<Unsubscribe> {

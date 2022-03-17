@@ -102,7 +102,6 @@ export default class ServerSentEvents {
       console.log(`received event for namedEvent: ${namedEvent}`);
       callback(JSON.parse(event.data));
     };
-    console.log('this.subscribeConnection', this.subscribeConnection);
     console.log(`add event listener for namedEvent: ${namedEvent}`);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 

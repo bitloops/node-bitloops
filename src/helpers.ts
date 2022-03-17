@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { JWTData } from './definitions';
+import { BitloopsUser, JWTData } from './definitions';
 import { AxiosHandlerOutcome } from './HTTP/definitions';
 
 export const wait = (ms: number) =>
@@ -9,7 +9,7 @@ export const wait = (ms: number) =>
 
 export const isBrowser = () => typeof window !== 'undefined';
 
-export const parseJwt = (token: string): any => {
+export const parseJwt = (token: string): JWTData => {
   const jwtPayload = token.split('.')[1];
   const base64Payload = jwtPayload.replace(/-/g, '+').replace(/_/g, '/');
   const jsonPayload = decodeURIComponent(
@@ -41,3 +41,24 @@ export const isGoogleServerless = (): boolean => {
   if (process.env.K_SERVICE) return true;
   return false;
 };
+
+export const jwtToBitloopsUser = (
+  jwtData: JWTData,
+  token: string,
+  refreshToken: string,
+  providerId: string,
+): BitloopsUser => ({
+  accessToken: token,
+  refreshToken,
+  sessionState: jwtData.session_state,
+  uid: jwtData.sub,
+  displayName: jwtData.name ?? jwtData.preferred_username,
+  firstName: jwtData.given_name,
+  lastName: jwtData.family_name,
+  email: jwtData.email,
+  emailVerified: `${jwtData.email_verified}`,
+  isAnonymous: false,
+  providerId,
+  clientId: jwtData.azp,
+  photoURL: jwtData.photoURL,
+});

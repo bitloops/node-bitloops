@@ -137,7 +137,7 @@ class Bitloops {
   private async getAuthHeaders() {
     const headers = { 'Content-Type': 'application/json', Authorization: 'Unauthorized ' };
     const { config } = this;
-    const user = await this.auth.getUser();
+    const user = await this.storage.getUser();
     if (config?.auth?.authenticationType === AuthTypes.User && user?.uid) {
       const sessionUuid = await this.storage.getSessionUuid();
       headers['provider-id'] = config?.auth.providerId;
@@ -158,7 +158,7 @@ class Bitloops {
     const { CancelToken } = axios;
     const beforeRequest = async (httpConfig) => {
       const bitloopsConfig = this.config;
-      const user = await this.auth.getUser();
+      const user = await this.storage.getUser();
       if (bitloopsConfig?.auth?.authenticationType === AuthTypes.User && user?.uid) {
         const { accessToken, refreshToken } = user;
         const isRefreshTokenExpired = isTokenExpired(refreshToken);
@@ -178,7 +178,7 @@ class Bitloops {
         }
         if (isAccessTokenExpired) {
           console.log('access token expired');
-          const newUser = await this.refreshToken();
+          const newUser = await this.auth.refreshToken();
           if (!httpConfig.headers) httpConfig.headers = {};
           httpConfig.headers.Authorization = `User ${newUser.accessToken}`;
 
@@ -203,53 +203,12 @@ class Bitloops {
         error?.response?.status === 401 &&
         !originalRequest.retry
       ) {
-        await this.refreshToken();
+        await this.auth.refreshToken();
         return true;
       }
       return false;
     };
     return new HTTP(beforeRequest.bind(this), afterResponseError.bind(this));
-  }
-
-  /**
-   * Tries to refresh token, token must be signed for our clientId,
-   * and not expired for success
-   */
-  private async refreshToken(): Promise<BitloopsUser> {
-    const { config } = this;
-    const url = `${config?.ssl === false ? 'http' : 'https'}://${
-      config?.server
-    }/bitloops/auth/refreshToken`;
-    const user = await this.auth.getUser();
-    if (!user?.refreshToken) throw new Error('no refresh token');
-    const body = {
-      refreshToken: user.refreshToken,
-      clientId: (config?.auth as IBitloopsAuthenticationOptions).clientId,
-      providerId: (config?.auth as IBitloopsAuthenticationOptions).providerId,
-    };
-    const { data: response, error } = await this.http.handlerWithoutRetries({
-      url,
-      method: 'POST',
-      data: body,
-    });
-    if (error) {
-      console.log('Refresh token was invalid');
-      // invalid refresh token
-      // clean refresh_token
-      // logout user
-      this.auth.clearAuthentication();
-      return Promise.reject(error);
-    }
-    const newAccessToken = response?.data?.accessToken;
-    const newRefreshToken = response?.data?.refreshToken;
-    const newUser: BitloopsUser = {
-      ...user,
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    };
-    console.log('Updated refresh token');
-    await this.storage.saveUser(newUser);
-    return newUser;
   }
 }
 

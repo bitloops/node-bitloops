@@ -8,6 +8,7 @@ import {
 } from '../definitions';
 import { IAuthService } from './types';
 import HTTP from '../HTTP';
+import { isTokenExpired, parseJwt } from '../helpers';
 
 type ServerParams = {
   requestParams?: any;
@@ -66,7 +67,7 @@ class AuthServer implements IAuthService {
     if (config.auth?.authenticationType !== AuthTypes.User) {
       throw new Error('AuthType must be User');
     }
-    const user = await this.getUser();
+    const user = await this.storage.getUser();
     if (user === null) throw new Error('Not currently logged in');
     if (user && config) {
       const { accessToken, refreshToken } = user;
@@ -94,9 +95,27 @@ class AuthServer implements IAuthService {
 
   // registerWithGoogle() {} // TODO implement registration vs authentication
 
-  // Returns the user information stored in localStorage
+  /**
+   * Returns the currently signed in user
+   */
   async getUser(): Promise<BitloopsUser | null> {
-    return this.storage.getUser();
+    const credsUser = await this.storage.getUser();
+    if (credsUser === null) return null;
+    const { accessToken, refreshToken } = credsUser;
+    const isRefreshTokenExpired = isTokenExpired(refreshToken);
+    const isAccessTokenExpired = isTokenExpired(accessToken);
+    // console.log('isRefreshTokenExpired', isRefreshTokenExpired);
+    // console.log('isAccessTokenExpired', isAccessTokenExpired);
+    if (isRefreshTokenExpired) {
+      await this.storage.deleteUser();
+      return null;
+    }
+    if (isAccessTokenExpired) {
+      console.log('access token expired');
+      const newUser = await this.refreshToken();
+      return parseJwt(newUser.accessToken);
+    }
+    return parseJwt(credsUser.accessToken);
   }
 
   async onAuthStateChange(): Promise<Unsubscribe> {
@@ -173,6 +192,52 @@ class AuthServer implements IAuthService {
       refreshToken,
     } as BitloopsUser;
     this.storage.saveUser(user);
+  }
+
+  // TODO make parent abstract class and move this func there
+  /**
+   * Tries to refresh token, token must be signed for our clientId,
+   * and not expired for success
+   */
+  async refreshToken(): Promise<BitloopsUser> {
+    const { bitloopsConfig: config } = this;
+    const url = `${config?.ssl === false ? 'http' : 'https'}://${
+      config?.server
+    }/bitloops/auth/refreshToken`;
+    const user = await this.storage.getUser();
+
+    if (config.auth?.authenticationType !== AuthTypes.User) {
+      throw new Error('Attempt to refresh token for non BitloopsUser AuthType');
+    }
+    if (!user?.refreshToken) throw new Error('no refresh token');
+    const body = {
+      refreshToken: user.refreshToken,
+      clientId: config?.auth.clientId,
+      providerId: config?.auth.providerId,
+    };
+    const { data: response, error } = await this.http.handlerWithoutRetries({
+      url,
+      method: 'POST',
+      data: body,
+    });
+    if (error) {
+      console.log('Refresh token was invalid');
+      // invalid refresh token
+      // clean refresh_token
+      // logout user
+      this.clearAuthentication();
+      return Promise.reject(error);
+    }
+    const newAccessToken = response?.data?.accessToken;
+    const newRefreshToken = response?.data?.refreshToken;
+    const newUser: BitloopsUser = {
+      ...user,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
+    console.log('Updated refresh token');
+    await this.storage.saveUser(newUser);
+    return newUser;
   }
 }
 

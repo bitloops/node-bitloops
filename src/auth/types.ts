@@ -10,6 +10,7 @@ export interface IAuthService {
   ) => Promise<Unsubscribe>;
   sendVerificationCode(phone: string): Promise<void>;
   verifyPhoneCode(phone: string, code: string): Promise<void>;
+  refreshToken(): Promise<BitloopsUser>;
 }
 
 export type ServerParams = {

@@ -185,7 +185,9 @@ class AuthClient implements IAuthService {
     if (error) {
       console.log('clearAuthentication failed:', (error as any)?.response?.status);
     }
+    // It fails when refresh is invalid and error is received from rest
     // TODO manually call AuthStateChanged with null values?
+    // else trigger it from rest even if refresh is invalid
     await this.storage.deleteUser();
   }
 

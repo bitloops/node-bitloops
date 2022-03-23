@@ -1,6 +1,6 @@
 {
   "name": "bitloops",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "description": "NodeJS library for the Bitloops",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,9 +34,9 @@
   "dependencies": {
     "axios": "^0.26.0",
     "eventsource-ts": "^0.0.9",
+    "keytar": "^7.9.0",
     "open": "^8.4.0",
-    "uuid": "^8.3.2",
-    "keytar": "^7.9.0"
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@types/jest": "^27.4.0",

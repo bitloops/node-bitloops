@@ -56,7 +56,7 @@ abstract class AuthBase {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
-    console.log('Updated refresh token', newUser);
+    console.log('Updated refresh token');
     await this.storage.saveUser(newUser);
     return newUser;
   }

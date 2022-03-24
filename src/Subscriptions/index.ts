@@ -7,6 +7,7 @@ import {
   UnsubscribeParams,
 } from '../definitions';
 import HTTP from '../HTTP';
+import NetworkRestError from '../HTTP/errors/NetworkRestError';
 
 export default class ServerSentEvents {
   public static instance: ServerSentEvents;
@@ -83,7 +84,9 @@ export default class ServerSentEvents {
       console.error('registerTopicORConnection error:', error);
       this.sseIsBeingInitialized = false;
       // TODO differentiate errors - Throw on host unreachable
-      throw new Error(`Got error response from REST:  ${JSON.stringify(error)}`);
+      if (error instanceof NetworkRestError)
+        throw new Error(`Got error response from REST: ${error}`);
+      return async () => {};
     }
     console.log('registerTopicORConnection success', response.data);
 

@@ -11,6 +11,7 @@ import {
 } from './definitions';
 import { isTokenExpired } from './helpers';
 import HTTP from './HTTP';
+import { CANCEL_REQUEST_MSG } from './HTTP/errors/definitions';
 import InternalStorageFactory from './InternalStorage/InternalStorageFactory';
 import ServerSentEvents from './Subscriptions';
 
@@ -170,10 +171,9 @@ class Bitloops {
         if (isRefreshTokenExpired) {
           console.log('refresh expired, logging out');
           await this.auth.clearAuthentication();
-          // TODO return null => Cancel request in http interceptor
           return {
             ...httpConfig,
-            cancelToken: new CancelToken((cancel) => cancel('Cancel repeated request')), // TODO fix weird Cancel request Message On some subscriptions post requests
+            cancelToken: new CancelToken((cancel) => cancel(CANCEL_REQUEST_MSG)), // TODO fix weird Cancel request Message On some subscriptions post requests
           };
         }
         if (isAccessTokenExpired) {
@@ -182,13 +182,14 @@ class Bitloops {
           if (!httpConfig.headers) httpConfig.headers = {};
           httpConfig.headers.Authorization = `User ${newUser.accessToken}`;
 
-          // TODO return Object => Continue response
+          // return Object => Continue response
           return httpConfig;
         }
         if (!httpConfig.headers) httpConfig.headers = {};
+        // Update token Header since it might be a retry
         httpConfig.headers.Authorization = `User ${accessToken}`;
       }
-      // TODO return Object => Continue response
+      // return Object => Continue response
       return httpConfig;
     };
 

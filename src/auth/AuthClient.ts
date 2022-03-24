@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig } from '../definitions';
 import { IAuthService } from './types';
-import { parseJwt } from '../helpers';
+import { isTokenExpired, parseJwt } from '../helpers';
 import ServerSentEvents from '../Subscriptions';
 import HTTP from '../HTTP';
 import AuthBase from './AuthBase';
@@ -156,32 +156,44 @@ class AuthClient extends AuthBase implements IAuthService {
     if (user === null || config.auth?.authenticationType !== AuthTypes.User) {
       return;
     }
+
     const { accessToken, clientId, providerId, refreshToken } = user;
-    const sessionUuid = await this.storage.getSessionUuid();
-    const body = {
-      accessToken,
-      clientId,
-      providerId,
-      refreshToken,
-      sessionUuid,
-      workspaceId: config.workspaceId,
-    };
-    const headers = {};
-    const { data, error } = await this.http.handlerWithoutRetries({
-      url: `${config?.ssl ? 'https' : 'http'}://${
-        config?.server
-      }/bitloops/auth/clearAuthentication`,
-      method: 'POST',
-      data: body,
-      headers,
-    });
-    if (error) {
-      console.log('clearAuthentication failed:', (error as any)?.response?.status);
+    const isRefreshTokenExpired = isTokenExpired(refreshToken);
+    const isAccessTokenExpired = isTokenExpired(accessToken);
+
+    /**
+     * Inform rest for logout only if tokens are valid
+     */
+    if (!isRefreshTokenExpired && !isAccessTokenExpired) {
+      const sessionUuid = await this.storage.getSessionUuid();
+      const body = {
+        accessToken,
+        clientId,
+        providerId,
+        refreshToken,
+        sessionUuid,
+        workspaceId: config.workspaceId,
+      };
+      const headers = {};
+      const { data, error } = await this.http.handlerWithoutRetries({
+        url: `${config?.ssl ? 'https' : 'http'}://${
+          config?.server
+        }/bitloops/auth/clearAuthentication`,
+        method: 'POST',
+        data: body,
+        headers,
+      });
+
+      if (error) {
+        console.log('clearAuthentication failed:', (error as any)?.response?.status);
+      }
     }
     // It fails when refresh is invalid and error is received from rest
     // TODO manually call AuthStateChanged with null values?
     // else trigger it from rest even if refresh is invalid
     await this.storage.deleteUser();
+
+    if (this.authChangeCallback) this.authChangeCallback(null);
   }
 
   // registerWithGoogle() {} // TODO implement registration vs authentication
@@ -216,6 +228,7 @@ class AuthClient extends AuthBase implements IAuthService {
           console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage
           if (receivedUser && JSON.stringify(receivedUser) !== '{}') {
+            console.log('SAVING RECEIVED USER', receivedUser);
             await this.storage.saveUser(receivedUser);
             authChangeCallback(receivedUser);
           } else {

@@ -10,7 +10,7 @@ export const wait = (ms: number) =>
 export const isBrowser = () => typeof window !== 'undefined';
 
 export const parseJwt = (token: string): JWTData => {
-  console.log('parseJwt:', token);
+  // console.log('parseJwt:', token);
   const jwtPayload = token.split('.')[1];
   const base64Payload = jwtPayload.replace(/-/g, '+').replace(/_/g, '/');
   const jsonPayload = decodeURIComponent(

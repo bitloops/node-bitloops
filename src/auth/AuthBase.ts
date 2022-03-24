@@ -41,22 +41,22 @@ abstract class AuthBase {
       method: 'POST',
       data: body,
     });
-    if (error) {
+    if (error || response === null) {
       console.log('Refresh token was invalid', error);
       // invalid refresh token
       // clean refresh_token
       // logout user
-      this.clearAuthentication();
+      await this.clearAuthentication();
       return Promise.reject(error);
     }
-    const newAccessToken = response?.data?.accessToken;
-    const newRefreshToken = response?.data?.refreshToken;
+    const newAccessToken = response.data.accessToken;
+    const newRefreshToken = response.data.refreshToken;
     const newUser: BitloopsUser = {
       ...user,
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     };
-    console.log('Updated refresh token');
+    console.log('Updated refresh token', newUser);
     await this.storage.saveUser(newUser);
     return newUser;
   }

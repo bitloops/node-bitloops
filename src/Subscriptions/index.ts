@@ -80,8 +80,7 @@ export default class ServerSentEvents {
     );
 
     if (error || response === null) {
-      console.error('registerTopicORConnection error', error);
-      // console.error('registerTopicORConnection', error);
+      console.error('registerTopicORConnection error:', error);
       this.sseIsBeingInitialized = false;
       // TODO differentiate errors - Throw on host unreachable
       throw new Error(`Got error response from REST:  ${JSON.stringify(error)}`);
@@ -121,7 +120,7 @@ export default class ServerSentEvents {
     }/bitloops/events/subscribe/${subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
-    console.log('Sending headers', headers);
+    // console.log('Sending headers', headers);
     return this.http.handler({
       url: subscribeUrl,
       method: 'POST',

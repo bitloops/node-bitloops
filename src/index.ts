@@ -169,7 +169,7 @@ class Bitloops {
 
         if (isRefreshTokenExpired) {
           console.log('refresh expired, logging out');
-          this.auth.clearAuthentication();
+          await this.auth.clearAuthentication();
           // TODO return null => Cancel request in http interceptor
           return {
             ...httpConfig,

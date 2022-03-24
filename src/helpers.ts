@@ -33,7 +33,7 @@ export const parseJwt = (token: string): JWTData => {
 export const isTokenExpired = (token: string): boolean => {
   const jwtData = parseJwt(token) as JWTData;
   const { exp } = jwtData;
-  console.log('expires at: ', new Date(exp * 1000));
+  // console.log('expires at: ', new Date(exp * 1000));
   const isExpired = Date.now() >= exp * 1000;
   return isExpired;
 };

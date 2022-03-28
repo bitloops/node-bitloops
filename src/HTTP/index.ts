@@ -1,5 +1,8 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { AxiosHandlerOutcome } from './definitions';
+import CanceledRequestError from './errors/CanceledRequestError';
+import { CANCEL_REQUEST_MSG } from './errors/definitions';
+import NetworkRestError from './errors/NetworkRestError';
 
 type InterceptRequest = (config: AxiosRequestConfig<any>) => Promise<any>;
 /*
@@ -39,7 +42,7 @@ export default class HTTP {
       return { data: response, error: null };
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        return { data: null, error: error.response };
+        return { data: null, error: this.handleAxiosError(error) };
       }
       return { data: null, error };
     }
@@ -51,7 +54,7 @@ export default class HTTP {
       return { data: response, error: null };
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        return { data: null, error: error.response };
+        return { data: null, error: this.handleAxiosError(error) };
       }
       return { data: null, error };
     }
@@ -86,5 +89,20 @@ export default class HTTP {
     );
 
     return instance;
+  }
+
+  private handleAxiosError(error: AxiosError) {
+    if (!error.response) {
+      // Handle canceled requests from axios interceptors
+      if (error.message === CANCEL_REQUEST_MSG) return new CanceledRequestError(error.message);
+      // console.error('AxiosError', error.message, ':AND:', error);
+      // network error - also !error.status
+      return new NetworkRestError(error.message);
+    }
+    // http status code
+    const code = error.response.status;
+    // response data
+    const response = error.response.data;
+    return error.response;
   }
 }

@@ -7,6 +7,7 @@ import {
   UnsubscribeParams,
 } from '../definitions';
 import HTTP from '../HTTP';
+import NetworkRestError from '../HTTP/errors/NetworkRestError';
 
 export default class ServerSentEvents {
   public static instance: ServerSentEvents;
@@ -80,11 +81,12 @@ export default class ServerSentEvents {
     );
 
     if (error || response === null) {
-      console.error('registerTopicORConnection error', error);
-      // console.error('registerTopicORConnection', error);
+      console.error('registerTopicORConnection error:', error);
       this.sseIsBeingInitialized = false;
       // TODO differentiate errors - Throw on host unreachable
-      throw new Error(`Got error response from REST:  ${JSON.stringify(error)}`);
+      if (error instanceof NetworkRestError)
+        throw new Error(`Got error response from REST: ${error}`);
+      return async () => {};
     }
     console.log('registerTopicORConnection success', response.data);
 
@@ -121,7 +123,7 @@ export default class ServerSentEvents {
     }/bitloops/events/subscribe/${subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
-    console.log('Sending headers', headers);
+    // console.log('Sending headers', headers);
     return this.http.handler({
       url: subscribeUrl,
       method: 'POST',
@@ -167,7 +169,6 @@ export default class ServerSentEvents {
   private sseReconnect() {
     setTimeout(async () => {
       console.log('Trying to reconnect sse with', this.reconnectFreqSecs);
-      // await this.setupEventSource();
       this.reconnectFreqSecs = this.reconnectFreqSecs >= 60 ? 60 : this.reconnectFreqSecs * 2;
       return this.tryToResubscribe();
     }, this.reconnectFreqSecs * 1000);
@@ -175,14 +176,14 @@ export default class ServerSentEvents {
 
   private async tryToResubscribe() {
     console.log('Attempting to resubscribe');
-    console.log(' this.eventMap.length', this.eventMap.size);
+    // console.log(' this.eventMap.length', this.eventMap.size);
     const subscribePromises = Array.from(this.eventMap.entries()).map(([namedEvent, callback]) =>
       this.subscribe(namedEvent, callback),
     );
     try {
-      console.log('this.eventMap length', subscribePromises.length);
+      // console.log('this.eventMap length', subscribePromises.length);
       await Promise.all(subscribePromises);
-      console.log('Resubscribed all topic successfully!');
+      console.log('Resubscribed all topics successfully!');
       // All subscribes were successful => done
     } catch (error) {
       // >= 1 subscribes failed => retry

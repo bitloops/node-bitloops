@@ -1,18 +1,13 @@
 import { v4 as uuid } from 'uuid';
 import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig } from '../definitions';
 import { IAuthService } from './types';
-import { parseJwt } from '../helpers';
+import { isTokenExpired, parseJwt } from '../helpers';
 import ServerSentEvents from '../Subscriptions';
 import HTTP from '../HTTP';
+import AuthBase from './AuthBase';
 
-class AuthClient implements IAuthService {
-  private bitloopsConfig: BitloopsConfig;
-
+class AuthClient extends AuthBase implements IAuthService {
   private subscriptions: ServerSentEvents;
-
-  private storage: IInternalStorage;
-
-  private http: HTTP;
 
   private authChangeCallback: (user: BitloopsUser | null) => void;
 
@@ -22,11 +17,9 @@ class AuthClient implements IAuthService {
     http: HTTP,
     bitloopsConfig: BitloopsConfig,
   ) {
-    this.bitloopsConfig = bitloopsConfig;
-    this.storage = storage;
-    this.subscriptions = subscriptions;
-    this.http = http;
+    super(storage, http, bitloopsConfig);
 
+    this.subscriptions = subscriptions;
     this.initializeSession();
   }
 
@@ -158,35 +151,49 @@ class AuthClient implements IAuthService {
 
   async clearAuthentication() {
     console.log('node bitloops logout called');
-    const user = await this.getUser();
+    const user = await this.storage.getUser();
     const config = this.bitloopsConfig;
     if (user === null || config.auth?.authenticationType !== AuthTypes.User) {
       return;
     }
+
     const { accessToken, clientId, providerId, refreshToken } = user;
-    const sessionUuid = await this.storage.getSessionUuid();
-    const body = {
-      accessToken,
-      clientId,
-      providerId,
-      refreshToken,
-      sessionUuid,
-      workspaceId: config.workspaceId,
-    };
-    const headers = {};
-    const { data, error } = await this.http.handlerWithoutRetries({
-      url: `${config?.ssl ? 'https' : 'http'}://${
-        config?.server
-      }/bitloops/auth/clearAuthentication`,
-      method: 'POST',
-      data: body,
-      headers,
-    });
-    if (error) {
-      console.log('clearAuthentication failed:', (error as any)?.response?.status);
+    const isRefreshTokenExpired = isTokenExpired(refreshToken);
+    const isAccessTokenExpired = isTokenExpired(accessToken);
+
+    /**
+     * Inform rest for logout only if tokens are valid
+     */
+    if (!isRefreshTokenExpired && !isAccessTokenExpired) {
+      const sessionUuid = await this.storage.getSessionUuid();
+      const body = {
+        accessToken,
+        clientId,
+        providerId,
+        refreshToken,
+        sessionUuid,
+        workspaceId: config.workspaceId,
+      };
+      const headers = {};
+      const { data, error } = await this.http.handlerWithoutRetries({
+        url: `${config?.ssl ? 'https' : 'http'}://${
+          config?.server
+        }/bitloops/auth/clearAuthentication`,
+        method: 'POST',
+        data: body,
+        headers,
+      });
+
+      if (error) {
+        console.log('clearAuthentication failed:', (error as any)?.response?.status);
+      }
     }
+    // It fails when refresh is invalid and error is received from rest
     // TODO manually call AuthStateChanged with null values?
+    // else trigger it from rest even if refresh is invalid
     await this.storage.deleteUser();
+
+    if (this.authChangeCallback) this.authChangeCallback(null);
   }
 
   // registerWithGoogle() {} // TODO implement registration vs authentication
@@ -201,7 +208,7 @@ class AuthClient implements IAuthService {
     // 2. User is authorized and subscribed to onAuthStateChange => we use the sessionUuid
     this.authChangeCallback = authChangeCallback;
 
-    const user = await this.getUser();
+    const user = await this.storage.getUser();
     const config = this.bitloopsConfig;
     // Checking if the correct auth type is being used else you cannot use onAuthStateChange
     if (config && config.auth?.authenticationType === AuthTypes.User) {
@@ -221,6 +228,7 @@ class AuthClient implements IAuthService {
           console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage
           if (receivedUser && JSON.stringify(receivedUser) !== '{}') {
+            console.log('SAVING RECEIVED USER', receivedUser);
             await this.storage.saveUser(receivedUser);
             authChangeCallback(receivedUser);
           } else {
@@ -232,52 +240,6 @@ class AuthClient implements IAuthService {
       return unsubscribe;
     }
     throw new Error('Auth type must be User');
-  }
-
-  // TODO make parent abstract class and move this func there
-  /**
-   * Tries to refresh token, token must be signed for our clientId,
-   * and not expired for success
-   */
-  async refreshToken(): Promise<BitloopsUser> {
-    const { bitloopsConfig: config } = this;
-    const url = `${config?.ssl === false ? 'http' : 'https'}://${
-      config?.server
-    }/bitloops/auth/refreshToken`;
-    const user = await this.storage.getUser();
-
-    if (config.auth?.authenticationType !== AuthTypes.User) {
-      throw new Error('Attempt to refresh token for non BitloopsUser AuthType');
-    }
-    if (!user?.refreshToken) throw new Error('no refresh token');
-    const body = {
-      refreshToken: user.refreshToken,
-      clientId: config?.auth.clientId,
-      providerId: config?.auth.providerId,
-    };
-    const { data: response, error } = await this.http.handlerWithoutRetries({
-      url,
-      method: 'POST',
-      data: body,
-    });
-    if (error) {
-      console.log('Refresh token was invalid');
-      // invalid refresh token
-      // clean refresh_token
-      // logout user
-      this.clearAuthentication();
-      return Promise.reject(error);
-    }
-    const newAccessToken = response?.data?.accessToken;
-    const newRefreshToken = response?.data?.refreshToken;
-    const newUser: BitloopsUser = {
-      ...user,
-      accessToken: newAccessToken,
-      refreshToken: newRefreshToken,
-    };
-    console.log('Updated refresh token');
-    await this.storage.saveUser(newUser);
-    return newUser;
   }
 }
 

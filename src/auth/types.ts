@@ -5,7 +5,7 @@ export interface IAuthService {
   authenticateWithGitHub(): Promise<void>;
   clearAuthentication(): Promise<void>;
   getUser(): Promise<BitloopsUser | null>;
-  onAuthStateChange: (
+  onAuthStateChanged: (
     authChangeCallback: (user: BitloopsUser | null) => void,
   ) => Promise<Unsubscribe>;
   sendVerificationCode(phone: string): Promise<void>;

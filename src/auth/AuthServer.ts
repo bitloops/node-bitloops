@@ -124,7 +124,7 @@ class AuthServer extends AuthBase implements IAuthService {
     );
   }
 
-  async onAuthStateChange(): Promise<Unsubscribe> {
+  async onAuthStateChanged(): Promise<Unsubscribe> {
     throw new Error('Unimplemented');
   }
 

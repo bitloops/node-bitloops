@@ -205,14 +205,14 @@ class AuthClient extends AuthBase implements IAuthService {
     return this.storage.getUser();
   }
 
-  async onAuthStateChange(authChangeCallback: (user: BitloopsUser | null) => void) {
-    // 1. User is unauthorized and subscribes to onAuthStateChange => we use the sessionUuid
-    // 2. User is authorized and subscribed to onAuthStateChange => we use the sessionUuid
+  async onAuthStateChanged(authChangeCallback: (user: BitloopsUser | null) => void) {
+    // 1. User is unauthorized and subscribes to onAuthStateChanged => we use the sessionUuid
+    // 2. User is authorized and subscribed to onAuthStateChanged => we use the sessionUuid
     this.authChangeCallback = authChangeCallback;
 
     const user = await this.storage.getUser();
     const config = this.bitloopsConfig;
-    // Checking if the correct auth type is being used else you cannot use onAuthStateChange
+    // Checking if the correct auth type is being used else you cannot use onAuthStateChanged
     if (config && config.auth?.authenticationType === AuthTypes.User) {
       const sessionUuid = await this.storage.getSessionUuid();
       /**

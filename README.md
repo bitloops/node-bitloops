@@ -65,7 +65,7 @@ bitloops.auth.verifyPhoneCode(phone, code);
 bitloops.auth.getUser();
 bitloops.auth.clear();
 
-bitloops.auth.onAuthStateChange((user: BitloopsUser) => {
+bitloops.auth.onAuthStateChanged((user: BitloopsUser) => {
   if (user) {
     // Do stuff when authenticated
   } else {

@@ -133,8 +133,9 @@ class AuthClient extends AuthBase implements IAuthService {
       refresh_token: refreshToken,
       session_state: sessionState,
     } = response.data;
-    console.log('parsedJwt', parseJwt(accessToken));
-    const { sub: uid, preferred_username: username } = parseJwt(accessToken);
+    const jwt = parseJwt(accessToken);
+    // console.log('parsedJwt', jwt);
+    const { sub: uid, preferred_username: username } = jwt;
 
     const user: Partial<BitloopsUser> = {
       accessToken,
@@ -142,6 +143,7 @@ class AuthClient extends AuthBase implements IAuthService {
       sessionState,
       uid,
       displayName: username,
+      jwt: parseJwt(accessToken),
     };
     // TODO fix types of BitloopsUser for different providers
     await this.storage.saveUser(user as any);

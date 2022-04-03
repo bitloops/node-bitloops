@@ -14,6 +14,7 @@ export type BitloopsUser = {
   providerId: string;
   clientId: string;
   photoURL: string;
+  jwt?: JWTData;
 };
 
 /** Removes subscribe listener */

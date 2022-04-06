@@ -9,7 +9,7 @@ export type BitloopsUser = {
   firstName: string;
   lastName: string;
   email: string;
-  emailVerified: string;
+  emailVerified: boolean;
   isAnonymous: boolean;
   providerId: string;
   clientId: string;

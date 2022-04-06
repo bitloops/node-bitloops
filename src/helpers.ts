@@ -1,6 +1,5 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import jwt_decode from 'jwt-decode';
 import { BitloopsUser, JWTData } from './definitions';
-import { AxiosHandlerOutcome } from './HTTP/definitions';
 
 export const wait = (ms: number) =>
   new Promise((resolve) => {
@@ -8,20 +7,6 @@ export const wait = (ms: number) =>
   });
 
 export const isBrowser = () => typeof window !== 'undefined';
-
-export const parseJwt = (token: string): JWTData => {
-  // console.log('parseJwt:', token);
-  const jwtPayload = token.split('.')[1];
-  const base64Payload = jwtPayload.replace(/-/g, '+').replace(/_/g, '/');
-  const jsonPayload = decodeURIComponent(
-    Buffer.from(base64Payload, 'base64')
-      .toString()
-      .split('')
-      .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
-      .join(''),
-  );
-  return JSON.parse(jsonPayload);
-};
 
 /**
  * Parses the encoded JWT token and checks for its expiry
@@ -31,7 +16,7 @@ export const parseJwt = (token: string): JWTData => {
  * or not
  */
 export const isTokenExpired = (token: string): boolean => {
-  const jwtData = parseJwt(token) as JWTData;
+  const jwtData = jwt_decode<JWTData>(token);
   const { exp } = jwtData;
   // console.log('expires at: ', new Date(exp * 1000));
   const isExpired = Date.now() >= exp * 1000;
@@ -57,7 +42,7 @@ export const jwtToBitloopsUser = (
   firstName: jwtData.given_name,
   lastName: jwtData.family_name,
   email: jwtData.email,
-  emailVerified: `${jwtData.email_verified}`,
+  emailVerified: jwtData.email_verified,
   isAnonymous: false,
   providerId,
   clientId: jwtData.azp,

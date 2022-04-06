@@ -1,7 +1,8 @@
+import jwt_decode from 'jwt-decode';
 import { v4 as uuid } from 'uuid';
-import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig } from '../definitions';
+import { AuthTypes, IInternalStorage, BitloopsUser, BitloopsConfig, JWTData } from '../definitions';
 import { IAuthService } from './types';
-import { isTokenExpired, parseJwt } from '../helpers';
+import { isTokenExpired } from '../helpers';
 import ServerSentEvents from '../Subscriptions';
 import HTTP from '../HTTP';
 import AuthBase from './AuthBase';
@@ -133,22 +134,36 @@ class AuthClient extends AuthBase implements IAuthService {
       refresh_token: refreshToken,
       session_state: sessionState,
     } = response.data;
-    const jwt = parseJwt(accessToken);
+    const jwt = jwt_decode<JWTData>(accessToken);
     // console.log('parsedJwt', jwt);
-    const { sub: uid, preferred_username: username } = jwt;
+    const {
+      sub: uid,
+      preferred_username: username,
+      given_name: firstName,
+      family_name: lastName,
+      email,
+      email_verified: emailVerified,
+      photoURL,
+    } = jwt;
 
-    const user: Partial<BitloopsUser> = {
+    const user: BitloopsUser = {
       accessToken,
       refreshToken,
       sessionState,
       uid,
       displayName: username,
-      jwt: parseJwt(accessToken),
+      firstName,
+      lastName,
+      email,
+      emailVerified,
+      photoURL,
+      providerId: auth.providerId,
+      clientId: jwt.azp,
+      isAnonymous: false,
+      jwt,
     };
-    // TODO fix types of BitloopsUser for different providers
-    await this.storage.saveUser(user as any);
-    // TODO fix types of BitloopsUser for different providers
-    this.authChangeCallback(user as BitloopsUser);
+    await this.storage.saveUser(user);
+    this.authChangeCallback(user);
   }
 
   async clearAuthentication() {
@@ -190,9 +205,6 @@ class AuthClient extends AuthBase implements IAuthService {
         console.log('clearAuthentication failed:', (error as any)?.response?.status);
       }
     }
-    // It fails when refresh is invalid and error is received from rest
-    // TODO manually call AuthStateChanged with null values?
-    // else trigger it from rest even if refresh is invalid
     await this.storage.deleteUser();
 
     if (this.authChangeCallback) this.authChangeCallback(null);

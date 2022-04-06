@@ -1,3 +1,4 @@
+import jwt_decode from 'jwt-decode';
 import open from 'open';
 import {
   AuthTypes,
@@ -5,10 +6,11 @@ import {
   BitloopsUser,
   BitloopsConfig,
   Unsubscribe,
+  JWTData,
 } from '../definitions';
 import { IAuthService } from './types';
 import HTTP from '../HTTP';
-import { isTokenExpired, jwtToBitloopsUser, parseJwt } from '../helpers';
+import { isTokenExpired, jwtToBitloopsUser } from '../helpers';
 import AuthBase from './AuthBase';
 
 type ServerParams = {
@@ -107,7 +109,7 @@ class AuthServer extends AuthBase implements IAuthService {
     if (isAccessTokenExpired) {
       console.log('access token expired');
       const newUser = await this.refreshToken();
-      const jwtData = parseJwt(newUser.accessToken);
+      const jwtData = jwt_decode<JWTData>(newUser.accessToken);
       return jwtToBitloopsUser(
         jwtData,
         newUser.accessToken,
@@ -115,7 +117,7 @@ class AuthServer extends AuthBase implements IAuthService {
         config.auth.providerId,
       );
     }
-    const jwtData = parseJwt(credsUser.accessToken);
+    const jwtData = jwt_decode<JWTData>(credsUser.accessToken);
     return jwtToBitloopsUser(
       jwtData,
       credsUser.accessToken,
@@ -193,7 +195,7 @@ class AuthServer extends AuthBase implements IAuthService {
     const { data } = response.data;
     // console.log('workflow responded', data);
     const { access_token: accessToken, refresh_token: refreshToken } = data;
-    const jwtData = parseJwt(accessToken);
+    const jwtData = jwt_decode<JWTData>(accessToken);
     const user = jwtToBitloopsUser(jwtData, accessToken, refreshToken, config.auth.providerId);
     this.storage.saveUser(user);
   }

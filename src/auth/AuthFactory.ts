@@ -14,7 +14,7 @@ export default class AuthFactory {
   ): IAuthService {
     if (isBrowser()) return new AuthClient(subscriptions, storage, http, bitloopsConfig);
     // eslint-disable-next-line global-require
-    const authServerPath = './AuthServer';
+    const authServerPath = './AuthServer'; // Do not remove this (it's used in order to not evaluate the require below when it's compiled)
     const AuthServer = require(authServerPath).default; // TODO change it to use async import
     return new AuthServer(storage, http, bitloopsConfig);
   }

@@ -3,7 +3,6 @@ import { isBrowser } from '../helpers';
 import HTTP from '../HTTP';
 import ServerSentEvents from '../Subscriptions';
 import AuthClient from './AuthClient';
-import AuthServer from './AuthServer';
 import { IAuthService } from './types';
 
 export default class AuthFactory {
@@ -14,6 +13,9 @@ export default class AuthFactory {
     bitloopsConfig: BitloopsConfig,
   ): IAuthService {
     if (isBrowser()) return new AuthClient(subscriptions, storage, http, bitloopsConfig);
+    // eslint-disable-next-line global-require
+    const authServerPath = './AuthServer';
+    const AuthServer = require(authServerPath).default; // TODO change it to use async import
     return new AuthServer(storage, http, bitloopsConfig);
   }
 }

@@ -38,7 +38,7 @@ const test = async () => {
     );
     console.log(workspaces);
 
-    await bitloops.subscribe('workflow-events.update', (data) => {
+    await bitloops.subscribe('update', (data) => {
       console.log('workflow.Update received', data);
     });
 

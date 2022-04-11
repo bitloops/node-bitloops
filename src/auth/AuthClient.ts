@@ -237,7 +237,7 @@ class AuthClient extends AuthBase implements IAuthService {
        */
       // TODO remove async from subscribe
       const unsubscribe = this.subscriptions.subscribe(
-        `workflow-events.auth:${config?.auth.providerId}:${sessionUuid}`,
+        `auth:${config?.auth.providerId}:${sessionUuid}`,
         async (receivedUser: BitloopsUser) => {
           console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage

@@ -80,6 +80,7 @@ export type AuthenticationOptionsType =
 export type BitloopsConfig = {
   apiKey: string;
   server: string;
+  eventServer?: string;
   environmentId: string;
   ssl?: boolean;
   workspaceId: string;

@@ -185,7 +185,8 @@ export default class ServerSentEvents {
   }
 
   private async setupEventSource() {
-    const url = `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server
+    const server = this.config.eventServer ?? this.config.server;
+    const url = `${this.config.ssl === false ? 'http' : 'https'}://${server
       }/bitloops/events/${this.subscriptionId}`;
 
     const headers = await this.getAuthHeaders();

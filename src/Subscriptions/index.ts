@@ -1,4 +1,4 @@
-import EventSource from 'eventsource-ts';
+import EventSource from 'eventsource';
 import {
   AuthTypes,
   BitloopsConfig,

@@ -1,10 +1,12 @@
 import EventSource from 'eventsource-ts';
+import { v4 as uuid } from 'uuid';
 import {
   AuthTypes,
   BitloopsConfig,
   IInternalStorage,
   Unsubscribe,
   UnsubscribeParams,
+  ListenerCallback,
 } from '../definitions';
 import HTTP from '../HTTP';
 import NetworkRestError from '../HTTP/errors/NetworkRestError';
@@ -24,7 +26,7 @@ export default class ServerSentEvents {
 
   private readonly eventMap = new Map();
 
-  private _sseIsBeingInitialized: boolean = false;
+  private _sseIsBeingInitialized: boolean = true;
 
   private reconnectFreqSecs: number = 1;
 
@@ -59,22 +61,19 @@ export default class ServerSentEvents {
   ): Promise<Unsubscribe> {
     console.log('subscribing topic:', namedEvent);
     this.eventMap.set(namedEvent, callback);
-    /** Retry if connection is being initialized */
-    if (this.subscriptionId === '' && this.sseIsBeingInitialized) {
+
+    /** If you are the initiator, establish sse connection */
+    if (this.subscriptionId === '') {
+      this.subscriptionId = uuid();
+      await this.setupEventSource();
+    }
+
+    if (this.sseIsBeingInitialized) {
       return new Promise((resolve) => {
         setTimeout(() => resolve(this.subscribe(namedEvent, callback)), 100);
       });
     }
-    /** Set initializing flag if you are the initiator */
-    if (this.subscriptionId === '' && this.sseIsBeingInitialized === false) {
-      this.sseIsBeingInitialized = true;
-    }
 
-    /**
-     * Becomes Critical section when subscriptionId = ''
-     * and sse connection is being Initialized
-     * If you are the initiator, response contains new subscriptionId from server
-     */
     const { data: response, error } = await this.registerTopicORConnection(
       this.subscriptionId,
       namedEvent,
@@ -86,28 +85,22 @@ export default class ServerSentEvents {
       // TODO differentiate errors - Throw on host unreachable
       if (error instanceof NetworkRestError)
         throw new Error(`Got error response from REST: ${error}`);
-      return async () => {};
+      return async () => { };
     }
     console.log('registerTopicORConnection success', response.data);
 
-    /** If you are the initiator, establish sse connection */
-    if (this.sseIsBeingInitialized === true && this.subscriptionId === '') {
-      this.subscriptionId = response.data;
-      this.sseIsBeingInitialized = false;
-      await this.setupEventSource();
-    }
-    /**
-     * End of critical section
-     */
-
-    const listenerCallback = (event: MessageEvent<any>) => {
-      console.log(`received event for namedEvent: ${namedEvent}`);
-      callback(JSON.parse(event.data));
-    };
     console.log(`add event listener for namedEvent: ${namedEvent}`);
+    const listenerCallback = this.setupListenerCallback(namedEvent, callback);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);
 
     return this.unsubscribe({ namedEvent, subscriptionId: this.subscriptionId, listenerCallback });
+  }
+
+  private setupListenerCallback<DataType>(namedEvent: string, callback: (data: DataType) => void): ListenerCallback {
+    return (event: MessageEvent<any>) => {
+      console.log(`received event for namedEvent: ${namedEvent}`);
+      callback(JSON.parse(event.data));
+    }
   }
 
   /**
@@ -118,9 +111,8 @@ export default class ServerSentEvents {
    * @returns
    */
   private async registerTopicORConnection(subscriptionId: string, namedEvent: string) {
-    const subscribeUrl = `${this.config.ssl === false ? 'http' : 'https'}://${
-      this.config.server
-    }/bitloops/events/subscribe/${subscriptionId}`;
+    const subscribeUrl = `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server
+      }/bitloops/events/subscribe/${subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
     // console.log('Sending headers', headers);
@@ -148,9 +140,8 @@ export default class ServerSentEvents {
       this.eventMap.delete(namedEvent);
       if (this.eventMap.size === 0) this.subscribeConnection.close();
 
-      const unsubscribeUrl = `${this.config.ssl === false ? 'http' : 'https'}://${
-        this.config.server
-      }/bitloops/events/unsubscribe/${subscriptionId}`;
+      const unsubscribeUrl = `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server
+        }/bitloops/events/unsubscribe/${subscriptionId}`;
 
       const headers = await this.getAuthHeaders();
 
@@ -194,25 +185,22 @@ export default class ServerSentEvents {
   }
 
   private async setupEventSource() {
-    const { subscriptionId } = this;
-    const url = `${this.config.ssl === false ? 'http' : 'https'}://${
-      this.config.server
-    }/bitloops/events/${subscriptionId}`;
+    const url = `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server
+      }/bitloops/events/${this.subscriptionId}`;
 
     const headers = await this.getAuthHeaders();
     const eventSourceInitDict = { headers };
 
-    // Need to subscribe with a valid subscriptionConnectionId, or rest will reject us
     this.subscribeConnection = new EventSource(url, eventSourceInitDict);
-    // if (!initialRun) this.resubscribe();
-
     this.subscribeConnection.onopen = () => {
+      console.log("The connection has been established.");
+      this.sseIsBeingInitialized = false;
       this.reconnectFreqSecs = 1;
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     this.subscribeConnection.onerror = (error: any) => {
-      // on error, rest will clear our connectionId so we need to create a new one
+      // on error, ermis will clear our connectionId so we need to create a new one
       console.log('subscribeConnection.onerror, closing and re-trying', error);
       this.subscribeConnection.close();
       this.subscriptionId = '';

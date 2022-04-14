@@ -20,10 +20,12 @@ export type BitloopsUser = {
 /** Removes subscribe listener */
 export type Unsubscribe = () => Promise<void>;
 
+export type ListenerCallback = (event: MessageEvent<any>) => void;
+
 export type UnsubscribeParams = {
   subscriptionId: string;
   namedEvent: string;
-  listenerCallback: (event: MessageEvent<any>) => void;
+  listenerCallback: ListenerCallback;
 };
 
 export enum AuthTypes {

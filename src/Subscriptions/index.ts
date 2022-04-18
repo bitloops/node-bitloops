@@ -120,7 +120,7 @@ export default class ServerSentEvents {
       url: subscribeUrl,
       method: 'POST',
       headers,
-      data: { topics: [namedEvent], workspaceId: this.config.workspaceId },
+      data: { topic: namedEvent, workspaceId: this.config.workspaceId },
     });
   }
 

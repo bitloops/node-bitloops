@@ -23,7 +23,6 @@ export type Unsubscribe = () => Promise<void>;
 export type ListenerCallback = (event: MessageEvent<any>) => void;
 
 export type UnsubscribeParams = {
-  subscriptionId: string;
   namedEvent: string;
   listenerCallback: ListenerCallback;
 };

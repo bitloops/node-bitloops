@@ -83,19 +83,13 @@ export default class ServerSentEvents {
 
     console.log('this.subscriptionId', this.subscriptionId);
     // console.log('this.sseIsBeingInitialized', this.sseIsBeingInitialized);
-    const { data: response, error } = await this.registerTopicORConnection(
-      this.subscriptionId,
-      namedEvent,
-    );
-
-    if (error || response === null) {
-      // console.error('registerTopicORConnection error:', error);
-      // TODO differentiate errors - Throw on host unreachable
+    try {
+      await this.registerTopicORConnection(this.subscriptionId, namedEvent);
+    } catch (error) {
       if (error instanceof NetworkRestError)
         console.error(`Got error response from REST: ${error}`);
       return async () => { };
     }
-    console.log('registerTopicORConnection result:', response?.data);
 
     console.log(`add event listener for namedEvent: ${namedEvent}`);
     this.subscribeConnection.addEventListener(namedEvent, listenerCallback);

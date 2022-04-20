@@ -58,7 +58,7 @@ export default class ServerSentEvents {
     const listenerCallback = this.setupListenerCallback(namedEvent, callback);
 
     const release = await this.mutex.acquire();
-    console.log('I acquired the lock')
+
     /** If you are the initiator, establish sse connection */
     if (this.subscriptionId === '') {
       this.subscriptionId = uuid();
@@ -68,21 +68,9 @@ export default class ServerSentEvents {
         return this.unsubscribe({ namedEvent, listenerCallback });
       } finally {
         release();
-        console.log('I released the lock')
       }
     }
-    console.log('first this.subscriptionId', this.subscriptionId);
-    // console.log('first this.sseIsBeingInitialized', this.sseIsBeingInitialized);
 
-    // if (this.sseIsBeingInitialized) {
-    //   console.log("Is not initialized");
-    //   return new Promise((resolve) => {
-    //     setTimeout(() => resolve(this.subscribe(namedEvent, callback)), 100);
-    //   });
-    // }
-
-    console.log('this.subscriptionId', this.subscriptionId);
-    // console.log('this.sseIsBeingInitialized', this.sseIsBeingInitialized);
     try {
       await this.registerTopicORConnection(this.subscriptionId, namedEvent);
     } catch (error) {
@@ -198,7 +186,6 @@ export default class ServerSentEvents {
       this.subscribeConnection = new EventSource(url, eventSourceInitDict);
       this.subscribeConnection.onopen = () => {
         console.log("The connection has been established.");
-        // this.sseIsBeingInitialized = false;
         this.reconnectFreqSecs = 1;
         return resolve();
       };
@@ -209,7 +196,6 @@ export default class ServerSentEvents {
         console.log('subscribeConnection.onerror, closing and re-trying', error);
         this.subscribeConnection.close();
         this.subscriptionId = '';
-        // this.sseIsBeingInitialized = true;
         this.sseReconnect();
         return reject(error);
       };

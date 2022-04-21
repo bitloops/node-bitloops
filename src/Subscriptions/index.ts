@@ -58,17 +58,20 @@ export default class ServerSentEvents {
     const listenerCallback = this.setupListenerCallback(namedEvent, callback);
 
     const release = await this.mutex.acquire();
-
+    console.log("I acquired the mutex", namedEvent);
     /** If you are the initiator, establish sse connection */
     if (this.subscriptionId === '') {
-      this.subscriptionId = uuid();
       try {
         await this.setupEventSource();
       } catch (err) {
         return this.unsubscribe({ namedEvent, listenerCallback });
       } finally {
         release();
+        console.log("I released the mutex", namedEvent);
       }
+    } else {
+      release();
+      console.log("I released the mutex", namedEvent);
     }
 
     try {
@@ -157,25 +160,22 @@ export default class ServerSentEvents {
   private async tryToResubscribe() {
     console.log('Attempting to resubscribe');
     // console.log(' this.eventMap.length', this.eventMap.size);
-    const subscribePromises = Array.from(this.eventMap.entries()).map(([namedEvent, callback]) =>
-      this.subscribe(namedEvent, callback),
-    );
     try {
-      // console.log('this.eventMap length', subscribePromises.length);
+      console.log('Setting again eventsource');
+      await this.setupEventSource();
+      const subscribePromises = Array.from(this.eventMap.entries()).map(([namedEvent, callback]) =>
+        this.subscribe(namedEvent, callback),
+      );
       await Promise.all(subscribePromises);
       console.log('Resubscribed all topics successfully!');
-      // All subscribes were successful => done
-    } catch (error) {
-      // >= 1 subscribes failed => retry
-      // console.log(`Failed to resubscribe, retrying... in ${this.reconnectFreqSecs}`);
-      // this.subscribeConnection.close();
-      // this.sseReconnect();
+    } catch (err) {
+      return;
     }
   }
 
   private async setupEventSource() {
     return new Promise<void>(async (resolve, reject) => {
-
+      this.subscriptionId = uuid();
       const server = this.config.eventServer ?? this.config.server;
       const url = `${this.config.ssl === false ? 'http' : 'https'}://${server
         }/bitloops/events/${this.subscriptionId}`;
@@ -195,7 +195,6 @@ export default class ServerSentEvents {
         // on error, ermis will clear our connectionId so we need to create a new one
         console.log('subscribeConnection.onerror, closing and re-trying', error);
         this.subscribeConnection.close();
-        this.subscriptionId = '';
         this.sseReconnect();
         return reject(error);
       };

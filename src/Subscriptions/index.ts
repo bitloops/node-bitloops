@@ -130,7 +130,10 @@ export default class ServerSentEvents {
       this.subscribeConnection.removeEventListener(namedEvent, listenerCallback);
       console.log(`removed eventListener for ${namedEvent}`);
       this.eventMap.delete(namedEvent);
-      if (this.eventMap.size === 0) this.subscribeConnection.close();
+      if (this.eventMap.size === 0) {
+        this.subscriptionId = '';
+        this.subscribeConnection.close();
+      }
 
       const unsubscribeUrl = `${this.config.ssl === false ? 'http' : 'https'}://${this.config.server
         }/bitloops/events/unsubscribe/${this.subscriptionId}`;

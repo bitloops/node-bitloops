@@ -32,6 +32,7 @@
   },
   "homepage": "https://bitloops.com",
   "dependencies": {
+    "async-mutex": "^0.3.2",
     "axios": "^0.26.0",
     "eventsource": "^2.0.0",
     "jwt-decode": "^3.1.2",

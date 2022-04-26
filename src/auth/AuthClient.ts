@@ -43,11 +43,9 @@ class AuthClient extends AuthBase implements IAuthService {
     if (config?.auth?.authenticationType !== AuthTypes.User) {
       throw new Error('Auth type must be User');
     }
-    const url = `${config?.ssl === false ? 'http' : 'https'}://${
-      config?.server
-    }/bitloops/auth/${provider}?client_id=${config?.auth.clientId}&provider_id=${
-      config?.auth.providerId
-    }&workspace_id=${config.workspaceId}&session_uuid=${sessionUuid}`;
+    const url = `${config?.ssl === false ? 'http' : 'https'}://${config?.server
+      }/bitloops/auth/${provider}?client_id=${config?.auth.clientId}&provider_id=${config?.auth.providerId
+      }&workspace_id=${config.workspaceId}&session_uuid=${sessionUuid}`;
 
     window.open(url, '_blank');
   }
@@ -193,9 +191,8 @@ class AuthClient extends AuthBase implements IAuthService {
       };
       const headers = {};
       const { data, error } = await this.http.handlerWithoutRetries({
-        url: `${config?.ssl ? 'https' : 'http'}://${
-          config?.server
-        }/bitloops/auth/clearAuthentication`,
+        url: `${config?.ssl ? 'https' : 'http'}://${config?.server
+          }/bitloops/auth/clearAuthentication`,
         method: 'POST',
         data: body,
         headers,
@@ -237,7 +234,7 @@ class AuthClient extends AuthBase implements IAuthService {
        */
       // TODO remove async from subscribe
       const unsubscribe = this.subscriptions.subscribe(
-        `workflow-events.auth:${config?.auth.providerId}:${sessionUuid}`,
+        `auth:${config?.auth.providerId}:${sessionUuid}`,
         async (receivedUser: BitloopsUser) => {
           console.log('node-bitloops,authstate event received');
           // If there is user information then we store it in our localStorage

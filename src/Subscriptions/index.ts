@@ -1,4 +1,4 @@
-import EventSource from 'eventsource-ts';
+import EventSource from 'eventsource';
 import { v4 as uuid } from 'uuid';
 import {
   AuthTypes,
